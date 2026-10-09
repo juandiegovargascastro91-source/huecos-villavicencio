@@ -2,62 +2,201 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HUECOS VILLAVICENCIO</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f3f6fa;
-            color: #183153;
-            text-align: center;
-        }
-        header {
-            background: #12345a;
-            color: white;
-            padding: 45px 20px;
-        }
-        main {
-            max-width: 700px;
-            margin: 60px auto;
-            padding: 25px;
-        }
-        .mensaje {
-            background: white;
-            padding: 35px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px #00000012;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>HUECOS VILLAVICENCIO</h1>
-        <p>Plataforma ciudadana de reporte vial</p>
-    </header>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUECOS VILLAVICENCIO</title>
 
-    <main>
-        <div class="mensaje">
-            <h2>¡Bienvenido!</h2>
-            <p>
-                Estamos construyendo una plataforma
-                para reportar y consultar huecos
-                en Villavicencio, Meta.
-            </p>
-            <p>Próximamente podrás registrar reportes.</p>
-            <a href="registro.html"
-   style="display:inline-block;
-          background:#115b99;
-          color:white;
-          padding:14px 25px;
-          border-radius:9px;
-          text-decoration:none;
-          font-weight:bold;
-          margin-top:15px;">
-    Registrarse
-</a>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f3f6fa;
+    color: #183153;
+    text-align: center;
+}
+
+header {
+    background: #12345a;
+    color: white;
+    padding: 45px 20px;
+}
+
+main {
+    max-width: 700px;
+    margin: 60px auto;
+    padding: 25px;
+}
+
+.mensaje {
+    background: white;
+    padding: 35px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px #00000012;
+}
+
+.botones {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.boton {
+    display: inline-block;
+    background: #115b99;
+    color: white;
+    padding: 14px 25px;
+    border: none;
+    border-radius: 9px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.secundario {
+    background: #52667b;
+}
+
+.boton:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+#estado {
+    color: #52667b;
+    margin-top: 15px;
+}
+
+[hidden] {
+    display: none !important;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>HUECOS VILLAVICENCIO</h1>
+    <p>Plataforma ciudadana de reporte vial</p>
+</header>
+
+<main>
+    <div class="mensaje">
+
+        <h2 id="bienvenida">¡Bienvenido!</h2>
+
+        <p>
+            Estamos construyendo una plataforma
+            para reportar y consultar huecos
+            en Villavicencio, Meta.
+        </p>
+
+        <p>Próximamente podrás registrar reportes.</p>
+
+        <p id="estado" role="status" aria-live="polite">
+            Verificando sesión...
+        </p>
+
+        <div id="sinSesion" class="botones" hidden>
+            <a href="registro.html" class="boton">
+                Registrarse
+            </a>
+
+            <a href="login.html" class="boton secundario">
+                Iniciar sesión
+            </a>
         </div>
-    </main>
+
+        <div id="conSesion" class="botones" hidden>
+            <button id="cerrarSesion"
+                    class="boton secundario"
+                    type="button">
+                Cerrar sesión
+            </button>
+        </div>
+
+    </div>
+</main>
+
+<script type="module">
+
+import { createClient } from
+'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+    'https://svwsaunrxskdifvsillz.supabase.co',
+    'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
+);
+
+const bienvenida = document.getElementById('bienvenida');
+const estado = document.getElementById('estado');
+const sinSesion = document.getElementById('sinSesion');
+const conSesion = document.getElementById('conSesion');
+const cerrarSesion = document.getElementById('cerrarSesion');
+
+function mostrarSinSesion() {
+    bienvenida.textContent = '¡Bienvenido!';
+    sinSesion.hidden = false;
+    conSesion.hidden = true;
+    estado.textContent = '';
+}
+
+function mostrarConSesion(usuario) {
+    const nombres = usuario.user_metadata?.nombres?.trim();
+    const apellidos = usuario.user_metadata?.apellidos?.trim();
+
+    const nombreCompleto = [nombres, apellidos]
+        .filter(Boolean)
+        .join(' ');
+
+    bienvenida.textContent = nombreCompleto
+        ? '¡Bienvenido, ' + nombreCompleto + '!'
+        : '¡Bienvenido!';
+
+    sinSesion.hidden = true;
+    conSesion.hidden = false;
+    estado.textContent = 'Sesión iniciada correctamente.';
+}
+
+async function verificarSesion() {
+    try {
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error || !data.user) {
+            mostrarSinSesion();
+            return;
+        }
+
+        mostrarConSesion(data.user);
+
+    } catch (error) {
+        mostrarSinSesion();
+        estado.textContent =
+            'No fue posible verificar la sesión. Intenta actualizar.';
+    }
+}
+
+cerrarSesion.addEventListener('click', async () => {
+    cerrarSesion.disabled = true;
+
+    const { error } = await supabase.auth.signOut();
+
+    cerrarSesion.disabled = false;
+
+    if (error) {
+        estado.textContent =
+            'No se pudo cerrar la sesión: ' + error.message;
+        return;
+    }
+
+    mostrarSinSesion();
+});
+
+verificarSesion();
+
+</script>
+
 </body>
 </html>
