@@ -3,8 +3,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reportar hueco | Huecos Villavicencio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Reportar hueco | HUECOS VILLAVICENCIO</title>
 
 <link
     rel="stylesheet"
@@ -14,7 +15,9 @@
 >
 
 <style>
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
@@ -35,6 +38,11 @@ header h1 {
     font-size: 25px;
 }
 
+header p {
+    margin: 0;
+    line-height: 1.5;
+}
+
 main {
     max-width: 850px;
     margin: 30px auto;
@@ -48,14 +56,13 @@ main {
     box-shadow: 0 4px 18px #00000012;
 }
 
-h2 { margin-top: 0; }
+h2 {
+    margin-top: 0;
+}
 
-#mapa {
-    height: 430px;
-    width: 100%;
-    border-radius: 10px;
-    margin-top: 18px;
-    border: 1px solid #d1dce6;
+.aviso {
+    color: #52667b;
+    line-height: 1.5;
 }
 
 button {
@@ -68,9 +75,53 @@ button {
     cursor: pointer;
 }
 
+button:hover {
+    background: #0d4778;
+}
+
 button:disabled {
     opacity: .6;
     cursor: wait;
+}
+
+#mapa {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 430px;
+    margin-top: 18px;
+    border: 1px solid #d1dce6;
+    border-radius: 10px;
+    overflow: hidden;
+    isolation: isolate;
+    z-index: 0;
+}
+
+/* Correcciones de visualización de Leaflet */
+
+.leaflet-container {
+    position: relative;
+    overflow: hidden;
+    background: #ddd;
+}
+
+.leaflet-container .leaflet-pane,
+.leaflet-container .leaflet-tile,
+.leaflet-container .leaflet-marker-icon,
+.leaflet-container .leaflet-marker-shadow,
+.leaflet-container .leaflet-tile-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.leaflet-container .leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+}
+
+.leaflet-container img {
+    box-sizing: content-box;
 }
 
 .ubicacion {
@@ -81,19 +132,51 @@ button:disabled {
     line-height: 1.8;
 }
 
-.aviso {
-    color: #52667b;
-    line-height: 1.5;
+.ubicacion strong {
+    display: block;
+    margin-bottom: 6px;
 }
 
 .error {
     color: #a12323;
 }
 
-a { color: #115b99; }
+.correcto {
+    color: #12623c;
+}
+
+.enlace-volver {
+    display: inline-block;
+    margin-top: 18px;
+    color: #115b99;
+    text-decoration: none;
+}
+
+.enlace-volver:hover {
+    text-decoration: underline;
+}
 
 [hidden] {
     display: none !important;
+}
+
+@media (max-width: 600px) {
+    main {
+        margin: 15px auto;
+        padding: 10px;
+    }
+
+    .panel {
+        padding: 17px;
+    }
+
+    #mapa {
+        height: 380px;
+    }
+
+    header h1 {
+        font-size: 22px;
+    }
 }
 </style>
 </head>
@@ -106,38 +189,63 @@ a { color: #115b99; }
 </header>
 
 <main>
-<div class="panel">
+    <div class="panel">
 
-    <h2>Ubicación del hueco</h2>
+        <h2>Ubicación del hueco</h2>
 
-    <p class="aviso">
-        Puedes utilizar tu ubicación actual o seleccionar
-        manualmente el lugar del hueco en el mapa.
-        Si utilizas GPS, mueve el marcador para ajustar
-        la ubicación exacta.
-    </p>
+        <p class="aviso">
+            Puedes utilizar tu ubicación actual o seleccionar
+            manualmente el lugar del hueco en el mapa.
+            Si utilizas GPS, mueve el marcador para ajustar
+            la ubicación exacta.
+        </p>
 
-    <button id="usarGPS" type="button">
-        Usar mi ubicación actual
-    </button>
+        <button id="usarGPS" type="button" disabled>
+            Usar mi ubicación actual
+        </button>
 
-    <p id="estadoGPS" class="aviso" role="status"></p>
+        <p
+            id="estadoGPS"
+            class="aviso"
+            role="status">
+            Verificando sesión...
+        </p>
 
-    <div id="mapa"></div>
+        <div
+            id="mapa"
+            aria-label="Mapa interactivo para seleccionar la ubicación del hueco">
+        </div>
 
-    <div class="ubicacion">
-        <strong>Coordenadas del hueco</strong>
-        <div>Latitud: <span id="latitud">Sin seleccionar</span></div>
-        <div>Longitud: <span id="longitud">Sin seleccionar</span></div>
+        <div class="ubicacion">
+
+            <strong>Coordenadas del hueco</strong>
+
+            <div>
+                Latitud:
+                <span id="latitud">Sin seleccionar</span>
+            </div>
+
+            <div>
+                Longitud:
+                <span id="longitud">Sin seleccionar</span>
+            </div>
+
+        </div>
+
+        <p
+            id="mensaje"
+            class="aviso"
+            role="status"
+            aria-live="polite">
+        </p>
+
+        <a
+            href="index.html"
+            class="enlace-volver">
+            ← Volver al inicio
+        </a>
+
     </div>
-
-    <p id="mensaje" class="aviso" role="status"></p>
-
-    <p>
-        <a href="index.html">← Volver al inicio</a>
-    </p>
-
-</div>
 </main>
 
 <script
@@ -160,25 +268,23 @@ const mensaje = document.getElementById('mensaje');
 const estadoGPS = document.getElementById('estadoGPS');
 const botonGPS = document.getElementById('usarGPS');
 
+let mapa = null;
 let marcador = null;
 let coordenadas = null;
-
-// Vista inicial aproximada de Villavicencio.
-const mapa = L.map('mapa').setView(
-    [4.1420, -73.6266],
-    13
-);
-
-L.tileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-        maxZoom: 19,
-        attribution:
-            '&copy; OpenStreetMap contributors'
-    }
-).addTo(mapa);
+let sesionVerificada = false;
 
 function seleccionarUbicacion(lat, lng) {
+
+    if (!sesionVerificada) {
+        return;
+    }
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        mensaje.textContent =
+            'Las coordenadas seleccionadas no son válidas.';
+        mensaje.className = 'error';
+        return;
+    }
 
     coordenadas = {
         latitud: lat,
@@ -195,15 +301,20 @@ function seleccionarUbicacion(lat, lng) {
 
         marcador = L.marker(
             [lat, lng],
-            { draggable: true }
+            {
+                draggable: true
+            }
         ).addTo(mapa);
 
         marcador.on('dragend', () => {
+
             const posicion = marcador.getLatLng();
+
             seleccionarUbicacion(
                 posicion.lat,
                 posicion.lng
             );
+
         });
 
     } else {
@@ -215,65 +326,145 @@ function seleccionarUbicacion(lat, lng) {
     mensaje.textContent =
         'Ubicación seleccionada correctamente.';
 
+    mensaje.className = 'correcto';
+
 }
 
-mapa.on('click', (evento) => {
-    seleccionarUbicacion(
-        evento.latlng.lat,
-        evento.latlng.lng
+function inicializarMapa() {
+
+    if (typeof L === 'undefined') {
+
+        mensaje.textContent =
+            'No fue posible cargar el mapa. ' +
+            'Comprueba tu conexión a Internet y actualiza la página.';
+
+        mensaje.className = 'error';
+
+        return;
+    }
+
+    // Centro inicial aproximado de Villavicencio.
+
+    mapa = L.map('mapa', {
+        zoomControl: true
+    }).setView(
+        [4.1420, -73.6266],
+        13
     );
-});
+
+    L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    ).addTo(mapa);
+
+    mapa.on('click', (evento) => {
+
+        seleccionarUbicacion(
+            evento.latlng.lat,
+            evento.latlng.lng
+        );
+
+    });
+
+    // Recalcular las dimensiones después de cargar el diseño.
+
+    requestAnimationFrame(() => {
+        mapa.invalidateSize();
+    });
+
+    window.addEventListener('load', () => {
+        mapa.invalidateSize();
+    });
+
+    window.addEventListener('resize', () => {
+        mapa.invalidateSize();
+    });
+
+}
 
 botonGPS.addEventListener('click', () => {
 
+    if (!sesionVerificada || !mapa) {
+        return;
+    }
+
     if (!navigator.geolocation) {
+
         estadoGPS.textContent =
             'Tu navegador no admite geolocalización.';
+
         estadoGPS.className = 'error';
+
         return;
     }
 
     botonGPS.disabled = true;
+
     estadoGPS.className = 'aviso';
-    estadoGPS.textContent = 'Obteniendo ubicación...';
+
+    estadoGPS.textContent =
+        'Obteniendo ubicación GPS...';
 
     navigator.geolocation.getCurrentPosition(
+
         (posicion) => {
 
             const lat = posicion.coords.latitude;
             const lng = posicion.coords.longitude;
 
             mapa.setView([lat, lng], 17);
+
             seleccionarUbicacion(lat, lng);
 
             estadoGPS.textContent =
-                'Ubicación GPS obtenida. ' +
+                'Ubicación GPS obtenida correctamente. ' +
                 'Puedes corregir el punto en el mapa.';
+
+            estadoGPS.className = 'correcto';
 
             botonGPS.disabled = false;
 
         },
+
         (error) => {
+
+            let detalle =
+                'No fue posible obtener tu ubicación.';
+
+            if (error.code === 1) {
+                detalle =
+                    'No autorizaste el acceso a la ubicación.';
+            } else if (error.code === 2) {
+                detalle =
+                    'El dispositivo no pudo determinar tu ubicación.';
+            } else if (error.code === 3) {
+                detalle =
+                    'Se agotó el tiempo para obtener la ubicación.';
+            }
+
+            estadoGPS.textContent =
+                detalle +
+                ' Puedes seleccionar el punto manualmente.';
 
             estadoGPS.className = 'error';
 
-            estadoGPS.textContent =
-                'No fue posible obtener tu ubicación. ' +
-                'Puedes seleccionar el punto manualmente.';
-
             botonGPS.disabled = false;
 
         },
+
         {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 0
         }
+
     );
 
 });
 
-// Solo usuarios autenticados pueden utilizar esta página.
 async function verificarSesion() {
 
     try {
@@ -282,11 +473,32 @@ async function verificarSesion() {
             await supabase.auth.getUser();
 
         if (error || !data.user) {
+
             window.location.replace('login.html');
+            return;
+
+        }
+
+        sesionVerificada = true;
+
+        inicializarMapa();
+
+        if (mapa) {
+
+            botonGPS.disabled = false;
+
+            estadoGPS.textContent =
+                'Selecciona un punto en el mapa o utiliza el GPS.';
+
         }
 
     } catch (error) {
-        window.location.replace('login.html');
+
+        estadoGPS.textContent =
+            'No fue posible verificar la sesión.';
+
+        estadoGPS.className = 'error';
+
     }
 
 }
@@ -294,5 +506,7 @@ async function verificarSesion() {
 verificarSesion();
 
 </script>
+
 </body>
 </html>
+
