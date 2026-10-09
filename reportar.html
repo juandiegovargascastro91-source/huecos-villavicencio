@@ -7,7 +7,6 @@
 
 <title>Reportar hueco | HUECOS VILLAVICENCIO</title>
 
-<!-- Estilos oficiales de Leaflet -->
 <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
@@ -60,6 +59,11 @@ h2 {
     font-size: 22px;
 }
 
+h3 {
+    margin-top: 30px;
+    font-size: 19px;
+}
+
 .aviso {
     color: #52667b;
     line-height: 1.5;
@@ -76,16 +80,14 @@ button {
     cursor: pointer;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     background: #0d4778;
 }
 
 button:disabled {
     opacity: .6;
-    cursor: wait;
+    cursor: not-allowed;
 }
-
-/* Contenedor del mapa */
 
 #mapa {
     width: 100%;
@@ -95,8 +97,6 @@ button:disabled {
     border-radius: 10px;
     overflow: hidden;
 }
-
-/* Coordenadas */
 
 .ubicacion {
     margin-top: 18px;
@@ -111,12 +111,77 @@ button:disabled {
     margin-bottom: 6px;
 }
 
+.formulario {
+    margin-top: 25px;
+    border-top: 1px solid #dce4ed;
+    padding-top: 5px;
+}
+
+.campo {
+    margin-bottom: 20px;
+}
+
+.campo label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd6e2;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    color: #183153;
+    background: white;
+}
+
+.campo textarea {
+    min-height: 115px;
+    resize: vertical;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+    outline: 2px solid #115b99;
+    outline-offset: 1px;
+}
+
+.obligatorio {
+    color: #a12323;
+}
+
+#enviarReporte {
+    width: 100%;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
 .error {
     color: #a12323;
 }
 
 .correcto {
     color: #12623c;
+}
+
+.resultado {
+    margin-top: 20px;
+    padding: 16px;
+    background: #e8f6ed;
+    border: 1px solid #a7d9b7;
+    border-radius: 10px;
+    color: #12623c;
+    line-height: 1.7;
+}
+
+.resultado[hidden] {
+    display: none;
 }
 
 .enlace-volver {
@@ -159,77 +224,172 @@ button:disabled {
 </header>
 
 <main>
-    <div class="panel">
+<div class="panel">
 
-        <h2>Ubicación del hueco</h2>
+    <h2>Ubicación del hueco</h2>
+
+    <p class="aviso">
+        Puedes utilizar tu ubicación actual o seleccionar
+        manualmente el lugar del hueco en el mapa.
+        Si utilizas GPS, mueve el marcador para ajustar
+        la ubicación exacta.
+    </p>
+
+    <button
+        id="usarGPS"
+        type="button"
+        disabled>
+        Usar mi ubicación actual
+    </button>
+
+    <p
+        id="estadoGPS"
+        class="aviso"
+        role="status">
+        Verificando sesión...
+    </p>
+
+    <div
+        id="mapa"
+        aria-label="Mapa interactivo para seleccionar la ubicación del hueco">
+    </div>
+
+    <div class="ubicacion">
+        <strong>Coordenadas del hueco</strong>
+
+        <div>
+            Latitud:
+            <span id="latitud">Sin seleccionar</span>
+        </div>
+
+        <div>
+            Longitud:
+            <span id="longitud">Sin seleccionar</span>
+        </div>
+    </div>
+
+    <p
+        id="mensaje"
+        class="aviso"
+        role="status"
+        aria-live="polite">
+    </p>
+
+    <section class="formulario">
+
+        <h3>Información del hueco</h3>
 
         <p class="aviso">
-            Puedes utilizar tu ubicación actual o seleccionar
-            manualmente el lugar del hueco en el mapa.
-            Si utilizas GPS, mueve el marcador para ajustar
-            la ubicación exacta.
+            Completa los datos del lugar donde se encuentra
+            el hueco. Los campos marcados con * son obligatorios.
         </p>
 
-        <button
-            id="usarGPS"
-            type="button"
-            disabled>
-            Usar mi ubicación actual
-        </button>
+        <form id="formReporte">
 
-        <p
-            id="estadoGPS"
-            class="aviso"
-            role="status">
-            Verificando sesión...
-        </p>
+            <div class="campo">
+                <label for="direccion">
+                    Dirección o punto de referencia
+                    <span class="obligatorio">*</span>
+                </label>
 
-        <!-- Mapa interactivo -->
-
-        <div
-            id="mapa"
-            aria-label="Mapa interactivo para seleccionar la ubicación del hueco">
-        </div>
-
-        <!-- Coordenadas -->
-
-        <div class="ubicacion">
-
-            <strong>Coordenadas del hueco</strong>
-
-            <div>
-                Latitud:
-                <span id="latitud">
-                    Sin seleccionar
-                </span>
+                <input
+                    type="text"
+                    id="direccion"
+                    maxlength="250"
+                    placeholder="Ejemplo: Calle 11 con Carrera 12, barrio El Estero"
+                    required
+                >
             </div>
 
-            <div>
-                Longitud:
-                <span id="longitud">
-                    Sin seleccionar
-                </span>
+            <div class="campo">
+                <label for="gravedad">
+                    Gravedad del hueco
+                    <span class="obligatorio">*</span>
+                </label>
+
+                <select id="gravedad" required>
+                    <option value="">
+                        Selecciona una opción
+                    </option>
+                    <option value="BAJA">
+                        BAJA - Daño menor
+                    </option>
+                    <option value="MEDIA">
+                        MEDIA - Dificulta la circulación
+                    </option>
+                    <option value="ALTA">
+                        ALTA - Representa un riesgo importante
+                    </option>
+                </select>
             </div>
 
-        </div>
+            <div class="campo">
+                <label for="descripcion">
+                    Descripción del hueco
+                    <span class="obligatorio">*</span>
+                </label>
+
+                <textarea
+                    id="descripcion"
+                    maxlength="1500"
+                    placeholder="Describe el tamaño aproximado, la ubicación y los riesgos que representa."
+                    required
+                ></textarea>
+            </div>
+
+            <button
+                id="enviarReporte"
+                type="submit"
+                disabled>
+                Enviar reporte
+            </button>
+
+        </form>
 
         <p
-            id="mensaje"
+            id="estadoEnvio"
             class="aviso"
             role="status"
             aria-live="polite">
         </p>
 
-        <a
-            href="index.html"
-            class="enlace-volver">
-            ← Volver al inicio
-        </a>
+        <div
+            id="resultadoReporte"
+            class="resultado"
+            hidden>
+            <strong>Reporte registrado correctamente</strong>
 
-    </div>
+            <div>
+                Número de reporte:
+                <strong id="numeroReporte"></strong>
+            </div>
+
+            <div>
+                Estado: <strong>PENDIENTE</strong>
+            </div>
+
+            <p>
+                Tu reporte fue recibido y está pendiente
+                de revisión antes de publicarse.
+            </p>
+
+            <button
+                id="nuevoReporte"
+                type="button">
+                Registrar otro hueco
+            </button>
+        </div>
+
+    </section>
+
+    <a
+        href="index.html"
+        class="enlace-volver">
+        ← Volver al inicio
+    </a>
+
+</div>
 </main>
-
-<!-- JavaScript oficial de Leaflet -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
@@ -256,18 +416,64 @@ const estadoGPS =
 const botonGPS =
     document.getElementById('usarGPS');
 
+const formulario =
+    document.getElementById('formReporte');
+
+const botonEnviar =
+    document.getElementById('enviarReporte');
+
+const estadoEnvio =
+    document.getElementById('estadoEnvio');
+
+const resultadoReporte =
+    document.getElementById('resultadoReporte');
+
+const botonNuevo =
+    document.getElementById('nuevoReporte');
+
 /* Variables */
 
 let mapa = null;
 let marcador = null;
 let coordenadas = null;
 let sesionVerificada = false;
+let enviando = false;
+let reporteRegistrado = false;
+
+/* Perímetro aproximado de validación */
+
+function estaEnAreaPermitida(lat, lng) {
+    return (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= 3.95 &&
+        lat <= 4.30 &&
+        lng >= -73.85 &&
+        lng <= -73.35
+    );
+}
+
+/* Controlar botón de envío */
+
+function actualizarBotonEnvio() {
+
+    botonEnviar.disabled =
+        !sesionVerificada ||
+        !mapa ||
+        !coordenadas ||
+        !estaEnAreaPermitida(
+            coordenadas.latitud,
+            coordenadas.longitud
+        ) ||
+        enviando ||
+        reporteRegistrado;
+}
 
 /* Seleccionar ubicación */
 
 function seleccionarUbicacion(lat, lng) {
 
-    if (!sesionVerificada) {
+    if (!sesionVerificada || enviando || reporteRegistrado) {
         return;
     }
 
@@ -310,8 +516,7 @@ function seleccionarUbicacion(lat, lng) {
 
         marcador.on('dragend', () => {
 
-            const posicion =
-                marcador.getLatLng();
+            const posicion = marcador.getLatLng();
 
             seleccionarUbicacion(
                 posicion.lat,
@@ -323,14 +528,25 @@ function seleccionarUbicacion(lat, lng) {
     } else {
 
         marcador.setLatLng([lat, lng]);
-
     }
 
-    mensaje.textContent =
-        'Ubicación seleccionada correctamente.';
+    if (estaEnAreaPermitida(lat, lng)) {
 
-    mensaje.className = 'correcto';
+        mensaje.textContent =
+            'Ubicación seleccionada correctamente.';
 
+        mensaje.className = 'correcto';
+
+    } else {
+
+        mensaje.textContent =
+            'La ubicación está fuera del área permitida ' +
+            'de Villavicencio. Selecciona otro punto.';
+
+        mensaje.className = 'error';
+    }
+
+    actualizarBotonEnvio();
 }
 
 /* Inicializar mapa */
@@ -348,8 +564,6 @@ function inicializarMapa() {
         return;
     }
 
-    /* Centro aproximado de Villavicencio */
-
     const centroVillavicencio = [
         4.1420,
         -73.6266
@@ -365,8 +579,6 @@ function inicializarMapa() {
         13
     );
 
-    /* Cartografía de OpenStreetMap */
-
     L.tileLayer(
         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
@@ -377,8 +589,6 @@ function inicializarMapa() {
         }
     ).addTo(mapa);
 
-    /* Selección manual */
-
     mapa.on('click', (evento) => {
 
         seleccionarUbicacion(
@@ -388,33 +598,29 @@ function inicializarMapa() {
 
     });
 
-    /* Ajustar dimensiones */
-
     requestAnimationFrame(() => {
-
         mapa.invalidateSize();
-
     });
 
     window.addEventListener('load', () => {
-
         mapa.invalidateSize();
-
     });
 
     window.addEventListener('resize', () => {
-
         mapa.invalidateSize();
-
     });
-
 }
 
 /* GPS automático */
 
 botonGPS.addEventListener('click', () => {
 
-    if (!sesionVerificada || !mapa) {
+    if (
+        !sesionVerificada ||
+        !mapa ||
+        enviando ||
+        reporteRegistrado
+    ) {
         return;
     }
 
@@ -439,11 +645,8 @@ botonGPS.addEventListener('click', () => {
 
         (posicion) => {
 
-            const lat =
-                posicion.coords.latitude;
-
-            const lng =
-                posicion.coords.longitude;
+            const lat = posicion.coords.latitude;
+            const lng = posicion.coords.longitude;
 
             mapa.setView(
                 [lat, lng],
@@ -462,7 +665,6 @@ botonGPS.addEventListener('click', () => {
             estadoGPS.className = 'correcto';
 
             botonGPS.disabled = false;
-
         },
 
         (error) => {
@@ -484,7 +686,6 @@ botonGPS.addEventListener('click', () => {
 
                 detalle =
                     'Se agotó el tiempo para obtener la ubicación.';
-
             }
 
             estadoGPS.textContent =
@@ -494,7 +695,6 @@ botonGPS.addEventListener('click', () => {
             estadoGPS.className = 'error';
 
             botonGPS.disabled = false;
-
         },
 
         {
@@ -502,12 +702,235 @@ botonGPS.addEventListener('click', () => {
             timeout: 15000,
             maximumAge: 0
         }
-
     );
-
 });
 
-/* Verificar sesión de usuario */
+/* Registrar reporte en Supabase */
+
+formulario.addEventListener('submit', async (evento) => {
+
+    evento.preventDefault();
+
+    if (enviando || reporteRegistrado) {
+        return;
+    }
+
+    if (!sesionVerificada) {
+
+        estadoEnvio.textContent =
+            'Debes iniciar sesión para registrar un reporte.';
+
+        estadoEnvio.className = 'error';
+
+        return;
+    }
+
+    if (!coordenadas) {
+
+        estadoEnvio.textContent =
+            'Primero selecciona la ubicación del hueco en el mapa.';
+
+        estadoEnvio.className = 'error';
+
+        return;
+    }
+
+    if (!estaEnAreaPermitida(
+        coordenadas.latitud,
+        coordenadas.longitud
+    )) {
+
+        estadoEnvio.textContent =
+            'Selecciona una ubicación dentro del área permitida.';
+
+        estadoEnvio.className = 'error';
+
+        return;
+    }
+
+    const direccion =
+        document.getElementById('direccion').value.trim();
+
+    const gravedad =
+        document.getElementById('gravedad').value;
+
+    const descripcion =
+        document.getElementById('descripcion').value.trim();
+
+    if (!direccion || !descripcion) {
+
+        estadoEnvio.textContent =
+            'Completa la dirección y la descripción.';
+
+        estadoEnvio.className = 'error';
+
+        return;
+    }
+
+    if (!['BAJA', 'MEDIA', 'ALTA'].includes(gravedad)) {
+
+        estadoEnvio.textContent =
+            'Selecciona una gravedad válida.';
+
+        estadoEnvio.className = 'error';
+
+        return;
+    }
+
+    enviando = true;
+
+    botonEnviar.disabled = true;
+    botonGPS.disabled = true;
+
+    if (marcador) {
+        marcador.dragging.disable();
+    }
+
+    estadoEnvio.textContent =
+        'Registrando reporte. Por favor espera...';
+
+    estadoEnvio.className = 'aviso';
+
+    try {
+
+        const { data: usuario, error: errorUsuario } =
+            await supabase.auth.getUser();
+
+        if (errorUsuario || !usuario.user) {
+
+            throw new Error(
+                'Tu sesión ha expirado. Inicia sesión nuevamente.'
+            );
+        }
+
+        const { data, error } = await supabase.rpc(
+            'registrar_reporte_hueco',
+            {
+                p_latitud: coordenadas.latitud,
+                p_longitud: coordenadas.longitud,
+                p_id_sector: null,
+                p_direccion: direccion,
+                p_descripcion: descripcion,
+                p_gravedad: gravedad
+            }
+        );
+
+        if (error) {
+            throw error;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+
+            throw new Error(
+                'No se recibió la confirmación del registro.'
+            );
+        }
+
+        const registro = data[0];
+
+        if (!registro || registro.id_reporte == null) {
+
+            throw new Error(
+                'No se recibió el número del reporte.'
+            );
+        }
+
+        reporteRegistrado = true;
+
+        document.getElementById('numeroReporte').textContent =
+            registro.id_reporte;
+
+        resultadoReporte.hidden = false;
+
+        formulario.hidden = true;
+
+        estadoEnvio.textContent =
+            'Tu reporte fue enviado correctamente.';
+
+        estadoEnvio.className = 'correcto';
+
+        mensaje.textContent =
+            'Ubicación registrada.';
+
+        mensaje.className = 'correcto';
+
+        resultadoReporte.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+        });
+
+    } catch (error) {
+
+        estadoEnvio.textContent =
+            'No fue posible registrar el reporte: ' +
+            (error.message || 'Error desconocido.');
+
+        estadoEnvio.className = 'error';
+
+    } finally {
+
+        enviando = false;
+
+        if (!reporteRegistrado) {
+
+            botonGPS.disabled = false;
+
+            if (marcador) {
+                marcador.dragging.enable();
+            }
+        }
+
+        actualizarBotonEnvio();
+    }
+});
+
+/* Registrar otro hueco */
+
+botonNuevo.addEventListener('click', () => {
+
+    reporteRegistrado = false;
+
+    formulario.reset();
+    formulario.hidden = false;
+
+    resultadoReporte.hidden = true;
+
+    coordenadas = null;
+
+    document.getElementById('latitud').textContent =
+        'Sin seleccionar';
+
+    document.getElementById('longitud').textContent =
+        'Sin seleccionar';
+
+    if (marcador) {
+        mapa.removeLayer(marcador);
+        marcador = null;
+    }
+
+    botonGPS.disabled = false;
+
+    estadoGPS.textContent =
+        'Selecciona un punto en el mapa o utiliza el GPS.';
+
+    estadoGPS.className = 'aviso';
+
+    estadoEnvio.textContent = '';
+
+    mensaje.textContent =
+        'Selecciona la ubicación del nuevo hueco.';
+
+    mensaje.className = 'aviso';
+
+    mapa.setView(
+        [4.1420, -73.6266],
+        13
+    );
+
+    actualizarBotonEnvio();
+});
+
+/* Verificar sesión */
 
 async function verificarSesion() {
 
@@ -518,10 +941,7 @@ async function verificarSesion() {
 
         if (error || !data.user) {
 
-            window.location.replace(
-                'login.html'
-            );
-
+            window.location.replace('login.html');
             return;
         }
 
@@ -534,10 +954,10 @@ async function verificarSesion() {
             botonGPS.disabled = false;
 
             estadoGPS.textContent =
-                'Selecciona un punto en el mapa ' +
-                'o utiliza el GPS.';
-
+                'Selecciona un punto en el mapa o utiliza el GPS.';
         }
+
+        actualizarBotonEnvio();
 
     } catch (error) {
 
@@ -545,9 +965,7 @@ async function verificarSesion() {
             'No fue posible verificar la sesión.';
 
         estadoGPS.className = 'error';
-
     }
-
 }
 
 /* Iniciar */
