@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -170,9 +171,14 @@ button:disabled {
             autocomplete="new-password"
             required
             minlength="8"
-            pattern="(?=.*[A-Za-z])(?=.*[0-9]).{10,}"
-            title="Mínimo 10 caracteres, con letras y números"
+            title="Mínimo 8 caracteres"
         >
+
+        <p style="font-size:13px;color:#52667b;margin:7px 0 0;">
+            La contraseña debe tener mínimo 8 caracteres.
+            Puedes utilizar letras, números y símbolos,
+            sin combinaciones obligatorias.
+        </p>
 
         <button id="registrar" type="submit">
             Registrar ciudadano
@@ -261,6 +267,16 @@ form.addEventListener('submit', async (event) => {
         return;
     }
 
+    if (password.length < 8) {
+
+        show(
+            'La contraseña debe tener mínimo 8 caracteres.',
+            false
+        );
+
+        return;
+    }
+
     button.disabled = true;
 
     button.textContent = 'Registrando...';
@@ -341,3 +357,4 @@ form.addEventListener('submit', async (event) => {
 
 </body>
 </html>
+
