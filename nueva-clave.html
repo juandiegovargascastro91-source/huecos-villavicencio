@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nueva contraseña | Huecos Villavicencio</title>
+<style>
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 30px 15px;
+    font-family: Arial, sans-serif;
+    background: #f3f6fa;
+    color: #183153;
+}
+.panel {
+    max-width: 480px;
+    margin: 45px auto;
+    padding: 35px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px #00000012;
+}
+h1 { color: #12345a; font-size: 25px; }
+label {
+    display: block;
+    margin: 18px 0 7px;
+    font-weight: bold;
+}
+input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #bac8d5;
+    border-radius: 8px;
+    font-size: 16px;
+}
+button {
+    width: 100%;
+    margin-top: 23px;
+    padding: 14px;
+    background: #115b99;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+button:disabled { opacity: .6; cursor: wait; }
+.mensaje {
+    margin-top: 17px;
+    line-height: 1.5;
+}
+.error { color: #a12323; }
+.ok { color: #12623c; }
+.enlaces {
+    text-align: center;
+    margin-top: 25px;
+}
+a { color: #115b99; }
+</style>
+</head>
+<body>
+
+<main class="panel">
+    <h1>HUECOS VILLAVICENCIO</h1>
+    <h2>Establecer nueva contraseña</h2>
+
+    <p id="instruccion">
+        Validando tu enlace de recuperación...
+    </p>
+
+    <form id="formClave" hidden>
+        <label for="clave">Nueva contraseña</label>
+        <input
+            id="clave"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+        >
+
+        <label for="confirmar">Confirmar contraseña</label>
+        <input
+            id="confirmar"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+        >
+
+        <p>Mínimo 8 caracteres, sin combinaciones obligatorias.</p>
+
+        <button id="guardar" type="submit">
+            Guardar nueva contraseña
+        </button>
+    </form>
+
+    <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
+
+    <div class="enlaces">
+        <a href="login.html">Volver a iniciar sesión</a>
+    </div>
+</main>
+
+<script type="module">
+import { createClient } from
+'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+    'https://svwsaunrxskdifvsillz.supabase.co',
+    'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI',
+    {
+        auth: {
+            detectSessionInUrl: true,
+            persistSession: false
+        }
+    }
+);
+
+const form = document.getElementById('formClave');
+const guardar = document.getElementById('guardar');
+const mensaje = document.getElementById('mensaje');
+const instruccion = document.getElementById('instruccion');
+
+let recuperacionAutorizada = false;
+
+function mostrar(texto, correcto = false) {
+    mensaje.textContent = texto;
+    mensaje.className = 'mensaje ' + (correcto ? 'ok' : 'error');
+}
+
+async function verificarEnlace() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const codigo = params.get('code');
+        const error = params.get('error_description');
+
+        if (error) throw new Error(error);
+
+        if (codigo) {
+            const { error: errorCodigo } =
+                await supabase.auth.exchangeCodeForSession(codigo);
+
+            if (errorCodigo) throw errorCodigo;
+        }
+
+        const { data, error: errorSesion } =
+            await supabase.auth.getSession();
+
+        if (errorSesion) throw errorSesion;
+
+        if (!data.session) {
+            throw new Error(
+                'El enlace no es válido o ha expirado. Solicita uno nuevo.'
+            );
+        }
+
+        recuperacionAutorizada = true;
+        form.hidden = false;
+        instruccion.textContent =
+            'Escribe y confirma tu nueva contraseña.';
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+
+    } catch (err) {
+        instruccion.textContent = '';
+        mostrar(err.message);
+    }
+}
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    if (!recuperacionAutorizada) return;
+
+    const clave = document.getElementById('clave').value;
+    const confirmar = document.getElementById('confirmar').value;
+
+    if (clave.length < 8) {
+        mostrar('La contraseña debe tener mínimo 8 caracteres.');
+        return;
+    }
+
+    if (clave !== confirmar) {
+        mostrar('Las contraseñas no coinciden.');
+        return;
+    }
+
+    guardar.disabled = true;
+
+    try {
+        const { error } =
+            await supabase.auth.updateUser({ password: clave });
+
+        if (error) throw error;
+
+        await supabase.auth.signOut();
+
+        recuperacionAutorizada = false;
+        form.hidden = true;
+        instruccion.textContent = '';
+
+        mostrar(
+            'Contraseña actualizada correctamente. Ya puedes iniciar sesión.',
+            true
+        );
+    } catch (err) {
+        mostrar('No se pudo actualizar la contraseña: ' + err.message);
+    } finally {
+        guardar.disabled = false;
+    }
+});
+
+verificarEnlace();
+</script>
+</body>
+</html>
