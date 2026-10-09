@@ -1,0 +1,298 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reportar hueco | Huecos Villavicencio</title>
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoYQ8dX+Zt2A="
+    crossorigin=""
+>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #f3f6fa;
+    color: #183153;
+    font-family: Arial, sans-serif;
+}
+
+header {
+    background: #12345a;
+    color: white;
+    text-align: center;
+    padding: 24px 15px;
+}
+
+header h1 {
+    margin: 0 0 8px;
+    font-size: 25px;
+}
+
+main {
+    max-width: 850px;
+    margin: 30px auto;
+    padding: 15px;
+}
+
+.panel {
+    background: white;
+    border-radius: 14px;
+    padding: 25px;
+    box-shadow: 0 4px 18px #00000012;
+}
+
+h2 { margin-top: 0; }
+
+#mapa {
+    height: 430px;
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 18px;
+    border: 1px solid #d1dce6;
+}
+
+button {
+    background: #115b99;
+    color: white;
+    border: none;
+    padding: 13px 18px;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.ubicacion {
+    margin-top: 18px;
+    background: #edf4fa;
+    border-radius: 9px;
+    padding: 15px;
+    line-height: 1.8;
+}
+
+.aviso {
+    color: #52667b;
+    line-height: 1.5;
+}
+
+.error {
+    color: #a12323;
+}
+
+a { color: #115b99; }
+
+[hidden] {
+    display: none !important;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>HUECOS VILLAVICENCIO</h1>
+    <p>Reporte ciudadano de huecos</p>
+</header>
+
+<main>
+<div class="panel">
+
+    <h2>Ubicación del hueco</h2>
+
+    <p class="aviso">
+        Puedes utilizar tu ubicación actual o seleccionar
+        manualmente el lugar del hueco en el mapa.
+        Si utilizas GPS, mueve el marcador para ajustar
+        la ubicación exacta.
+    </p>
+
+    <button id="usarGPS" type="button">
+        Usar mi ubicación actual
+    </button>
+
+    <p id="estadoGPS" class="aviso" role="status"></p>
+
+    <div id="mapa"></div>
+
+    <div class="ubicacion">
+        <strong>Coordenadas del hueco</strong>
+        <div>Latitud: <span id="latitud">Sin seleccionar</span></div>
+        <div>Longitud: <span id="longitud">Sin seleccionar</span></div>
+    </div>
+
+    <p id="mensaje" class="aviso" role="status"></p>
+
+    <p>
+        <a href="index.html">← Volver al inicio</a>
+    </p>
+
+</div>
+</main>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+</script>
+
+<script type="module">
+
+import { createClient } from
+'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+    'https://svwsaunrxskdifvsillz.supabase.co',
+    'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
+);
+
+const mensaje = document.getElementById('mensaje');
+const estadoGPS = document.getElementById('estadoGPS');
+const botonGPS = document.getElementById('usarGPS');
+
+let marcador = null;
+let coordenadas = null;
+
+// Vista inicial aproximada de Villavicencio.
+const mapa = L.map('mapa').setView(
+    [4.1420, -73.6266],
+    13
+);
+
+L.tileLayer(
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        maxZoom: 19,
+        attribution:
+            '&copy; OpenStreetMap contributors'
+    }
+).addTo(mapa);
+
+function seleccionarUbicacion(lat, lng) {
+
+    coordenadas = {
+        latitud: lat,
+        longitud: lng
+    };
+
+    document.getElementById('latitud').textContent =
+        lat.toFixed(6);
+
+    document.getElementById('longitud').textContent =
+        lng.toFixed(6);
+
+    if (!marcador) {
+
+        marcador = L.marker(
+            [lat, lng],
+            { draggable: true }
+        ).addTo(mapa);
+
+        marcador.on('dragend', () => {
+            const posicion = marcador.getLatLng();
+            seleccionarUbicacion(
+                posicion.lat,
+                posicion.lng
+            );
+        });
+
+    } else {
+
+        marcador.setLatLng([lat, lng]);
+
+    }
+
+    mensaje.textContent =
+        'Ubicación seleccionada correctamente.';
+
+}
+
+mapa.on('click', (evento) => {
+    seleccionarUbicacion(
+        evento.latlng.lat,
+        evento.latlng.lng
+    );
+});
+
+botonGPS.addEventListener('click', () => {
+
+    if (!navigator.geolocation) {
+        estadoGPS.textContent =
+            'Tu navegador no admite geolocalización.';
+        estadoGPS.className = 'error';
+        return;
+    }
+
+    botonGPS.disabled = true;
+    estadoGPS.className = 'aviso';
+    estadoGPS.textContent = 'Obteniendo ubicación...';
+
+    navigator.geolocation.getCurrentPosition(
+        (posicion) => {
+
+            const lat = posicion.coords.latitude;
+            const lng = posicion.coords.longitude;
+
+            mapa.setView([lat, lng], 17);
+            seleccionarUbicacion(lat, lng);
+
+            estadoGPS.textContent =
+                'Ubicación GPS obtenida. ' +
+                'Puedes corregir el punto en el mapa.';
+
+            botonGPS.disabled = false;
+
+        },
+        (error) => {
+
+            estadoGPS.className = 'error';
+
+            estadoGPS.textContent =
+                'No fue posible obtener tu ubicación. ' +
+                'Puedes seleccionar el punto manualmente.';
+
+            botonGPS.disabled = false;
+
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+
+});
+
+// Solo usuarios autenticados pueden utilizar esta página.
+async function verificarSesion() {
+
+    try {
+
+        const { data, error } =
+            await supabase.auth.getUser();
+
+        if (error || !data.user) {
+            window.location.replace('login.html');
+        }
+
+    } catch (error) {
+        window.location.replace('login.html');
+    }
+
+}
+
+verificarSesion();
+
+</script>
+</body>
+</html>
