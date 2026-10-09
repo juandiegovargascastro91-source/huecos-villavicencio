@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recuperar contraseña | Huecos Villavicencio</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 30px 15px;
+    font-family: Arial, sans-serif;
+    background: #f3f6fa;
+    color: #183153;
+}
+
+.panel {
+    max-width: 480px;
+    margin: 45px auto;
+    padding: 35px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px #00000012;
+}
+
+h1 { color: #12345a; font-size: 25px; }
+
+label {
+    display: block;
+    margin: 18px 0 7px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #bac8d5;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    margin-top: 23px;
+    padding: 14px;
+    background: #115b99;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:disabled { opacity: .6; cursor: wait; }
+
+.mensaje {
+    margin-top: 17px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.error { color: #a12323; }
+.ok { color: #12623c; }
+
+.enlaces {
+    text-align: center;
+    margin-top: 25px;
+    line-height: 2;
+}
+
+a { color: #115b99; }
+</style>
+</head>
+<body>
+
+<main class="panel">
+
+    <h1>HUECOS VILLAVICENCIO</h1>
+    <h2>Recuperar contraseña</h2>
+
+    <p>
+        Ingresa el correo electrónico de tu cuenta.
+        Recibirás un enlace para establecer una nueva contraseña.
+    </p>
+
+    <form id="formRecuperar">
+
+        <label for="correo">Correo electrónico</label>
+
+        <input
+            id="correo"
+            type="email"
+            autocomplete="email"
+            required
+        >
+
+        <button id="enviar" type="submit">
+            Enviar enlace de recuperación
+        </button>
+
+    </form>
+
+    <div
+        id="mensaje"
+        class="mensaje"
+        role="status"
+        aria-live="polite">
+    </div>
+
+    <div class="enlaces">
+        <a href="login.html">Volver a iniciar sesión</a>
+        <br>
+        <a href="index.html">Volver al inicio</a>
+    </div>
+
+</main>
+
+<script type="module">
+
+import { createClient } from
+'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+    'https://svwsaunrxskdifvsillz.supabase.co',
+    'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
+);
+
+const REDIRECT_URL =
+    'https://juandiegovargascastro91-source.github.io/huecos-villavicencio/nueva-clave.html';
+
+const form = document.getElementById('formRecuperar');
+const button = document.getElementById('enviar');
+const mensaje = document.getElementById('mensaje');
+
+form.addEventListener('submit', async (event) => {
+
+    event.preventDefault();
+
+    button.disabled = true;
+    mensaje.textContent = '';
+    mensaje.className = 'mensaje';
+
+    try {
+
+        const email =
+            document.getElementById('correo').value.trim();
+
+        const { error } =
+            await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: REDIRECT_URL
+            });
+
+        if (error) throw error;
+
+        mensaje.textContent =
+            'Si el correo corresponde a una cuenta registrada, ' +
+            'recibirás un enlace para restablecer tu contraseña. ' +
+            'Revisa también la carpeta de correo no deseado.';
+
+        mensaje.className = 'mensaje ok';
+
+    } catch (error) {
+
+        mensaje.textContent =
+            'No fue posible procesar la solicitud: ' +
+            error.message;
+
+        mensaje.className = 'mensaje error';
+
+    } finally {
+
+        button.disabled = false;
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
