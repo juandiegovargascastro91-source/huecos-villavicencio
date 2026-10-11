@@ -338,14 +338,14 @@ button:disabled {
             </div>
 
             <div class="campo">
-                <label for="fotografias">Fotografías del hueco (opcional, máximo 3)</label>
+                <label for="fotografias">Fotografía del hueco (opcional, máximo 1)</label>
                 <div class="acciones-fotos">
                     <button id="tomarFoto" type="button">📷 Tomar fotografía</button>
                     <button id="elegirFotos" type="button">🖼️ Elegir de galería</button>
                 </div>
                 <input id="camara" type="file" accept="image/*" capture="environment" hidden aria-label="Tomar fotografía con la cámara">
-                <input id="fotografias" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple hidden aria-label="Seleccionar fotografías de la galería">
-                <p class="fotos-ayuda">Máximo 3 fotografías. Se comprimen automáticamente a JPG antes de subirlas (menos de 2 MB cada una). Puedes revisar y quitar imágenes antes de enviar el reporte. La cámara depende del navegador y del dispositivo.</p>
+                <input id="fotografias" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden aria-label="Seleccionar fotografías de la galería">
+                <p class="fotos-ayuda">Máximo una fotografía por reporte. Se comprime automáticamente a JPG antes de subirla (máximo 2 MB). Puedes revisarla o quitarla antes de enviar. La cámara depende del navegador y del dispositivo.</p>
                 <div id="vistaFotos" class="vista-fotos" aria-live="polite"></div>
                 <p id="estadoFotos" class="aviso" role="status"></p>
             </div>
@@ -448,7 +448,7 @@ const botonGaleria = document.getElementById('elegirFotos');
 const vistaFotos = document.getElementById('vistaFotos');
 const estadoFotos = document.getElementById('estadoFotos');
 const resultadoFotos = document.getElementById('resultadoFotos');
-const MAX_FOTOS = 3;
+const MAX_FOTOS = 1;
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_ORIGINAL_BYTES = 25 * 1024 * 1024;
 let fotosSeleccionadas = [];
@@ -489,7 +489,7 @@ function mostrarFotos() {
             if (enviando || reporteRegistrado || procesandoFotos) return;
             fotosSeleccionadas.splice(indice, 1);
             mostrarFotos();
-            estadoFotos.textContent = `${fotosSeleccionadas.length} de ${MAX_FOTOS} fotografías listas.`;
+            estadoFotos.textContent = fotosSeleccionadas.length ? 'Fotografía lista para enviar.' : 'No hay fotografía seleccionada.';
             estadoFotos.className = 'aviso';
         });
         tarjeta.append(imagen, nombre, quitar);
@@ -558,7 +558,7 @@ async function incorporarFotos(input) {
     input.value = '';
     if (!archivos.length) return;
     if (fotosSeleccionadas.length + archivos.length > MAX_FOTOS) {
-        estadoFotos.textContent = `Solo se permiten ${MAX_FOTOS} fotografías en total. Ya tienes ${fotosSeleccionadas.length}.`;
+        estadoFotos.textContent = 'Solo se permite una fotografía por reporte. Quita la anterior para seleccionar otra.';
         estadoFotos.className = 'error';
         return;
     }
@@ -579,7 +579,7 @@ async function incorporarFotos(input) {
     } finally {
         procesandoFotos = false;
         mostrarFotos();
-        estadoFotos.textContent = `${fotosSeleccionadas.length} fotografía(s) lista(s) para enviar.` +
+        estadoFotos.textContent = (fotosSeleccionadas.length ? 'Fotografía lista para enviar.' : 'No hay fotografía seleccionada.') +
             (errores.length ? ' No se procesaron: ' + errores.join(' ') : '');
         estadoFotos.className = errores.length ? 'error' : 'correcto';
     }
@@ -1029,16 +1029,16 @@ formulario.addEventListener('submit', async (evento) => {
         if (fotosSeleccionadas.length) {
             try {
                 const resultado = await subirFotografias(registro.id_reporte, usuario.user.id);
-                resumenFotos = `${resultado.registradas} de ${fotosSeleccionadas.length} fotografía(s) guardada(s).`;
+                resumenFotos = (resultado.registradas ? 'Fotografía guardada correctamente.' : 'No se pudo guardar la fotografía.');
                 if (resultado.errores.length) {
-                    resumenFotos += ' Algunas imágenes no pudieron guardarse: ' + resultado.errores.join(' ');
+                    resumenFotos += ' Detalle: ' + resultado.errores.join(' ');
                 }
             } catch (errorFotos) {
-                resumenFotos = 'El reporte se registró, pero ocurrió un problema al cargar las fotografías: ' +
+                resumenFotos = 'El reporte se registró, pero ocurrió un problema al cargar la fotografía: ' +
                     (errorFotos.message || 'Error desconocido.');
             }
         } else {
-            resumenFotos = 'No se adjuntaron fotografías.';
+            resumenFotos = 'No se adjuntó fotografía.';
         }
         resultadoFotos.textContent = resumenFotos;
 
