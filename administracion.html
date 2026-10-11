@@ -211,6 +211,24 @@ button:disabled{
     font-size:18px;
 }
 
+/* Navegación administrativa y filtros */
+.modulos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.modulo{background:white;color:#183153;border:2px solid #d6e1ec;border-radius:12px;padding:18px;text-align:center;box-shadow:0 4px 15px #00000010}
+.modulo.activo{border-color:#115b99;background:#edf4fa}
+.modulo strong{display:block;font-size:26px;color:#115b99;margin-top:8px}
+.modulo span{display:block;margin-top:5px;font-size:12px;font-weight:normal}
+.contadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.contador{background:#f3f6fa;color:#183153;border:2px solid transparent;border-radius:10px;padding:14px 8px;text-align:center}
+.contador.activo{border-color:#115b99;background:#edf4fa}
+.contador strong{display:block;font-size:26px;margin:4px 0}
+.contador span{font-size:12px;font-weight:normal}
+.contador.reportado strong{color:#b33434}
+.contador.reparacion strong{color:#9a6700}
+.contador.reparado strong{color:#167346}
+.herramientas{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}
+.herramientas input{flex:1;min-width:180px;padding:12px;border:1px solid #bdcbd9;border-radius:8px;font-size:14px}
+.paginacion{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}
+@media(max-width:600px){.contadores{grid-template-columns:repeat(2,minmax(0,1fr))}.modulo{padding:12px 7px;font-size:12px}.modulo strong{font-size:22px}}
 .oculto{display:none!important}
 
 @media(max-width:600px){
@@ -258,14 +276,20 @@ button:disabled{
 
 <div id="contenido" class="oculto">
 
-    <section class="resumen">
-        <div class="indicador">
+    <nav class="modulos" aria-label="Módulos administrativos">
+        <button id="moduloPendientes" class="modulo activo" type="button" aria-pressed="true">
+            Huecos pendientes por aprobar
             <strong id="totalPendientes">0</strong>
-            Reportes pendientes
-        </div>
-    </section>
+            <span>Reportes pendientes de revisión</span>
+        </button>
+        <button id="moduloHuecos" class="modulo oculto" type="button" aria-pressed="false">
+            Administrar huecos
+            <strong id="totalPublicados">—</strong>
+            <span>Huecos publicados</span>
+        </button>
+    </nav>
 
-    <section class="panel">
+    <section id="panelPendientes" class="panel">
 
         <div class="barra">
             <h2>Reportes pendientes de revisión</h2>
@@ -289,8 +313,24 @@ button:disabled{
             <button id="actualizarHuecos" type="button">Actualizar huecos</button>
         </div>
         <p class="aviso">Consulta los huecos publicados y cambia su estado. Solo los administradores activos pueden guardar cambios.</p>
+        <div class="contadores" aria-label="Filtros y conteos por estado">
+            <button type="button" class="contador activo" data-filtro="TODOS"><strong id="conteoTodos">—</strong><span>Todos</span></button>
+            <button type="button" class="contador reportado" data-filtro="REPORTADO"><strong id="conteoReportados">—</strong><span>Reportados</span></button>
+            <button type="button" class="contador reparacion" data-filtro="REPARACION_REPORTADA"><strong id="conteoReparacion">—</strong><span>En reparación</span></button>
+            <button type="button" class="contador reparado" data-filtro="REPARADO"><strong id="conteoReparados">—</strong><span>Reparados</span></button>
+        </div>
+        <div class="herramientas">
+            <input id="buscarHueco" type="search" placeholder="Buscar por ID o dirección" aria-label="Buscar huecos por ID o dirección">
+            <button id="aplicarBusqueda" type="button">Buscar</button>
+            <button id="limpiarBusqueda" class="secundario" type="button">Limpiar</button>
+        </div>
         <p id="mensajeHuecos" class="aviso" role="status" aria-live="polite"></p>
         <div id="listaHuecos"></div>
+        <div class="paginacion">
+            <button id="paginaAnterior" type="button" class="secundario">← Anterior</button>
+            <span id="infoPagina">Página 1</span>
+            <button id="paginaSiguiente" type="button">Siguiente →</button>
+        </div>
     </section>
 
 </div>
@@ -340,6 +380,22 @@ const panelEstados = document.getElementById('panelEstados');
 const listaHuecos = document.getElementById('listaHuecos');
 const mensajeHuecos = document.getElementById('mensajeHuecos');
 const botonActualizarHuecos = document.getElementById('actualizarHuecos');
+const panelPendientes = document.getElementById('panelPendientes');
+const moduloPendientes = document.getElementById('moduloPendientes');
+const moduloHuecos = document.getElementById('moduloHuecos');
+const totalPublicados = document.getElementById('totalPublicados');
+const buscarHueco = document.getElementById('buscarHueco');
+const aplicarBusqueda = document.getElementById('aplicarBusqueda');
+const limpiarBusqueda = document.getElementById('limpiarBusqueda');
+const paginaAnterior = document.getElementById('paginaAnterior');
+const paginaSiguiente = document.getElementById('paginaSiguiente');
+const infoPagina = document.getElementById('infoPagina');
+const TAMANO_PAGINA = 20;
+let paginaHuecos = 0;
+let filtroHuecos = 'TODOS';
+let busquedaHuecos = '';
+let totalFiltrados = 0;
+let vistaActiva = 'pendientes';
 let esAdministrador = false;
 let cargandoHuecos = false;
 
@@ -400,6 +456,7 @@ async function verificarAcceso() {
         if (errorAdministrador) {
             esAdministrador = false;
             panelEstados.classList.add('oculto');
+            moduloHuecos.classList.add('oculto');
             mostrarMensaje(
                 'No fue posible comprobar el rol de administrador: ' +
                 errorAdministrador.message,
@@ -407,11 +464,13 @@ async function verificarAcceso() {
             );
         } else {
             esAdministrador = permisoAdministrador === true;
-            panelEstados.classList.toggle('oculto', !esAdministrador);
+            moduloHuecos.classList.toggle('oculto', !esAdministrador);
+            panelEstados.classList.add('oculto');
         }
 
         await cargarReportes();
-        if (esAdministrador) await cargarHuecos();
+        // El historial se consulta al abrir su módulo; los contadores se cargan en segundo plano.
+        if (esAdministrador) await actualizarContadoresHuecos();
 
     } catch (error) {
 
@@ -908,6 +967,7 @@ async function validarReporte(idReporte, nuevoEstado) {
 
     cargando = false;
     await cargarReportes();
+    if (esAdministrador) await actualizarContadoresHuecos();
 }
 
 /* ADMINISTRACIÓN DE ESTADOS DE HUECOS */
@@ -923,45 +983,128 @@ function mensajeEstadoHuecos(texto, tipo='aviso') {
     mensajeHuecos.className = tipo;
 }
 
+function cambiarVista(vista) {
+    if (vista === 'huecos' && !esAdministrador) return;
+    vistaActiva = vista;
+    panelPendientes.classList.toggle('oculto', vista !== 'pendientes');
+    panelEstados.classList.toggle('oculto', vista !== 'huecos');
+    moduloPendientes.classList.toggle('activo', vista === 'pendientes');
+    moduloHuecos.classList.toggle('activo', vista === 'huecos');
+    moduloPendientes.setAttribute('aria-pressed', String(vista === 'pendientes'));
+    moduloHuecos.setAttribute('aria-pressed', String(vista === 'huecos'));
+    if (vista === 'huecos') cargarHuecos();
+    else requestAnimationFrame(() => mapas.forEach(m => m.invalidateSize()));
+}
+
+moduloPendientes.addEventListener('click', () => cambiarVista('pendientes'));
+moduloHuecos.addEventListener('click', () => cambiarVista('huecos'));
+
+async function contarHuecos(estado = null) {
+    let consulta = supabase.from('huecos')
+        .select('id_hueco', {count:'exact',head:true});
+    if (estado) consulta = consulta.eq('estado', estado);
+    const {count,error} = await consulta;
+    if (error) throw error;
+    return count ?? 0;
+}
+
+async function actualizarContadoresHuecos() {
+    if (!autorizado || !esAdministrador) return;
+    try {
+        const [todos,reportados,reparacion,reparados] = await Promise.all([
+            contarHuecos(), contarHuecos('REPORTADO'),
+            contarHuecos('REPARACION_REPORTADA'), contarHuecos('REPARADO')
+        ]);
+        totalPublicados.textContent = todos;
+        document.getElementById('conteoTodos').textContent = todos;
+        document.getElementById('conteoReportados').textContent = reportados;
+        document.getElementById('conteoReparacion').textContent = reparacion;
+        document.getElementById('conteoReparados').textContent = reparados;
+    } catch (error) {
+        mensajeEstadoHuecos('No fue posible consultar los contadores: '+error.message,'error');
+    }
+}
+
+function actualizarFiltrosVisuales() {
+    document.querySelectorAll('[data-filtro]').forEach(b => {
+        b.classList.toggle('activo', b.dataset.filtro === filtroHuecos);
+        b.setAttribute('aria-pressed', String(b.dataset.filtro === filtroHuecos));
+    });
+}
+
+document.querySelectorAll('[data-filtro]').forEach(b => {
+    b.addEventListener('click', () => {
+        filtroHuecos = b.dataset.filtro;
+        paginaHuecos = 0;
+        actualizarFiltrosVisuales();
+        cargarHuecos();
+    });
+});
+
+function buscar() {
+    busquedaHuecos = buscarHueco.value.trim();
+    paginaHuecos = 0;
+    cargarHuecos();
+}
+aplicarBusqueda.addEventListener('click', buscar);
+buscarHueco.addEventListener('keydown', e => {if(e.key==='Enter') buscar();});
+limpiarBusqueda.addEventListener('click', () => {
+    buscarHueco.value = '';
+    busquedaHuecos = '';
+    paginaHuecos = 0;
+    cargarHuecos();
+});
+paginaAnterior.addEventListener('click', () => {
+    if (paginaHuecos > 0) {paginaHuecos--;cargarHuecos();}
+});
+paginaSiguiente.addEventListener('click', () => {
+    if ((paginaHuecos+1)*TAMANO_PAGINA < totalFiltrados) {paginaHuecos++;cargarHuecos();}
+});
+
 async function cargarHuecos() {
     if (!autorizado || !esAdministrador || cargandoHuecos) return;
     cargandoHuecos = true;
     botonActualizarHuecos.disabled = true;
     mensajeEstadoHuecos('Consultando huecos publicados...');
-
     try {
-        // La política RLS pública solo devuelve huecos con reportes aprobados.
-        const {data, error} = await supabase
-            .from('huecos')
-            .select('id_hueco,direccion,gravedad,estado')
-            .order('id_hueco', {ascending:false})
-            .limit(1000);
+        // La política RLS existente limita la consulta a huecos publicados.
+        let consulta = supabase.from('huecos')
+            .select('id_hueco,direccion,gravedad,estado',{count:'exact'});
+        if (filtroHuecos !== 'TODOS') consulta = consulta.eq('estado', filtroHuecos);
+        if (busquedaHuecos) {
+            if (/^\d+$/.test(busquedaHuecos)) {
+                consulta = consulta.eq('id_hueco', Number(busquedaHuecos));
+            } else {
+                // Escapar comodines del patrón ILIKE y caracteres especiales del filtro.
+                const patron = busquedaHuecos.replace(/[\\%_]/g, '\\$&');
+                consulta = consulta.ilike('direccion', '%' + patron + '%');
+            }
+        }
+        const inicio = paginaHuecos * TAMANO_PAGINA;
+        const {data,error,count} = await consulta
+            .order('id_hueco',{ascending:false})
+            .range(inicio,inicio+TAMANO_PAGINA-1);
         if (error) throw error;
-
         listaHuecos.replaceChildren();
         const huecos = data || [];
-
+        totalFiltrados = count ?? 0;
         if (!huecos.length) {
             const vacio = document.createElement('p');
             vacio.className = 'aviso';
-            vacio.textContent = 'No hay huecos publicados para administrar.';
+            vacio.textContent = 'No se encontraron huecos para los filtros seleccionados.';
             listaHuecos.appendChild(vacio);
         }
-
         for (const hueco of huecos) {
             const tarjeta = document.createElement('article');
             tarjeta.className = 'estado-hueco';
-
             const titulo = document.createElement('h3');
             titulo.textContent = 'Hueco #' + hueco.id_hueco;
             tarjeta.appendChild(titulo);
-
             const detalle = document.createElement('div');
             detalle.className = 'detalle';
             crearTexto(detalle, 'Dirección', hueco.direccion);
             crearTexto(detalle, 'Gravedad', hueco.gravedad);
             tarjeta.appendChild(detalle);
-
             const actual = document.createElement('div');
             actual.className = 'estado-actual ' + (
                 hueco.estado === 'REPORTADO' ? 'reportado' :
@@ -970,19 +1113,17 @@ async function cargarHuecos() {
             );
             actual.textContent = 'Estado actual: ' + (nombresEstados[hueco.estado] || hueco.estado || 'Desconocido');
             tarjeta.appendChild(actual);
-
             const acciones = document.createElement('div');
             acciones.className = 'acciones';
             const selector = document.createElement('select');
-            selector.setAttribute('aria-label', 'Nuevo estado del hueco #' + hueco.id_hueco);
-            for (const [valor, nombre] of Object.entries(nombresEstados)) {
+            selector.setAttribute('aria-label','Nuevo estado del hueco #'+hueco.id_hueco);
+            for (const [valor,nombre] of Object.entries(nombresEstados)) {
                 const opcion = document.createElement('option');
                 opcion.value = valor;
                 opcion.textContent = nombre;
                 selector.appendChild(opcion);
             }
             selector.value = nombresEstados[hueco.estado] ? hueco.estado : 'REPORTADO';
-
             const guardar = document.createElement('button');
             guardar.type = 'button';
             guardar.textContent = 'Guardar estado';
@@ -990,14 +1131,18 @@ async function cargarHuecos() {
             selector.addEventListener('change', () => {
                 guardar.disabled = selector.value === hueco.estado;
             });
-            guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco, selector.value));
-            acciones.append(selector, guardar);
+            guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco,selector.value));
+            acciones.append(selector,guardar);
             tarjeta.appendChild(acciones);
             listaHuecos.appendChild(tarjeta);
         }
-        mensajeEstadoHuecos('Se encontraron ' + huecos.length + ' hueco(s) publicados.', 'correcto');
+        const paginas = Math.max(1,Math.ceil(totalFiltrados/TAMANO_PAGINA));
+        infoPagina.textContent = 'Página '+(paginaHuecos+1)+' de '+paginas;
+        paginaAnterior.disabled = paginaHuecos===0;
+        paginaSiguiente.disabled = (paginaHuecos+1)>=paginas;
+        mensajeEstadoHuecos('Se encontraron '+totalFiltrados+' hueco(s) con los filtros seleccionados.','correcto');
     } catch (error) {
-        mensajeEstadoHuecos('No fue posible cargar los huecos: ' + error.message, 'error');
+        mensajeEstadoHuecos('No fue posible cargar los huecos: '+error.message,'error');
     } finally {
         cargandoHuecos = false;
         botonActualizarHuecos.disabled = false;
@@ -1036,10 +1181,14 @@ async function cambiarEstadoHueco(idHueco, nuevoEstado) {
         return;
     }
     cargandoHuecos = false;
+    await actualizarContadoresHuecos();
     await cargarHuecos();
 }
 
-botonActualizarHuecos.addEventListener('click', cargarHuecos);
+botonActualizarHuecos.addEventListener('click', async () => {
+    await actualizarContadoresHuecos();
+    await cargarHuecos();
+});
 
 /* ACTUALIZAR */
 
