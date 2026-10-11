@@ -268,6 +268,15 @@ button:disabled{
     .acciones button{flex:1}
     .imagen-reporte{max-height:350px}
 }
+
+/* Fotografías originales asociadas a huecos aprobados */
+.fotos-ciudadanas{margin-top:14px;padding:13px;background:#f6f9fc;border:1px solid #d6e1ec;border-radius:9px}
+.fotos-ciudadanas h4{margin:0 0 9px}
+.fotos-ciudadanas .galeria-ciudadana{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.fotos-ciudadanas .foto-ciudadana{background:white;border:1px solid #d6e1ec;border-radius:9px;padding:9px;max-width:270px;flex:1 1 190px}
+.fotos-ciudadanas .foto-ciudadana img{display:block;width:100%;max-height:210px;object-fit:contain;cursor:zoom-in;border-radius:6px}
+.fotos-ciudadanas .foto-ciudadana small{display:block;margin-top:8px;color:#52667b}
+
 </style>
 </head>
 
@@ -1072,6 +1081,82 @@ limpiarBusqueda.addEventListener('click', () => {
     cargarHuecos();
 });
 
+/* Fotografías originales de reportes ciudadanos aprobados */
+async function cargarFotosCiudadanas(idHueco, contenedor) {
+    try {
+        // Relacionar el hueco con sus reportes aprobados, sin mostrar pendientes ni rechazados.
+        const {data:reportes,error:errorReportes} = await supabase
+            .from('reportes')
+            .select('id_reporte')
+            .eq('id_hueco',idHueco)
+            .eq('estado_validacion','APROBADO')
+            .order('id_reporte',{ascending:false});
+        if (!contenedor.isConnected) return;
+        if (errorReportes) throw new Error('No fue posible consultar los reportes asociados: '+errorReportes.message);
+
+        if (!reportes?.length) {
+            contenedor.querySelector('.mensaje-fotos').textContent =
+                'No se encontraron reportes aprobados asociados a este hueco o no son visibles para esta sesión.';
+            return;
+        }
+
+        const galeria=document.createElement('div');
+        galeria.className='galeria-ciudadana';
+        let fotografias=0;
+        let fallos=0;
+
+        for (const reporte of reportes) {
+            // RPC ya utilizada por el panel para consultar la ruta privada de la fotografía.
+            const {data:resultado,error:errorFoto}=await supabase.rpc(
+                'consultar_fotografia_reporte',{p_id_reporte:reporte.id_reporte}
+            );
+            if (!contenedor.isConnected) return;
+            if (errorFoto) { fallos++; continue; }
+            const filas=Array.isArray(resultado)?resultado:(resultado?[resultado]:[]);
+            for (const fila of filas) {
+                if (!fila?.ruta_imagen) continue;
+                const {data:enlace,error:errorEnlace}=await supabase.storage.from(BUCKET)
+                    .createSignedUrl(fila.ruta_imagen,300);
+                if (!contenedor.isConnected) return;
+                if (errorEnlace || !enlace?.signedUrl) { fallos++; continue; }
+
+                const marco=document.createElement('div');
+                marco.className='foto-ciudadana';
+                const foto=document.createElement('img');
+                foto.src=enlace.signedUrl;
+                foto.alt='Fotografía ciudadana del reporte #'+reporte.id_reporte;
+                foto.loading='lazy';
+                foto.title='Haz clic para ampliar';
+                foto.addEventListener('click',()=>abrirFotografia(enlace.signedUrl));
+                const pie=document.createElement('small');
+                pie.textContent='Reporte ciudadano #'+reporte.id_reporte+' · Clic para ampliar';
+                marco.append(foto,pie);
+                galeria.appendChild(marco);
+                fotografias++;
+            }
+        }
+        if (!contenedor.isConnected) return;
+        const mensaje=contenedor.querySelector('.mensaje-fotos');
+        mensaje.textContent=fotografias
+            ? fotografias+' fotografía(s) de reportes ciudadanos aprobados.'
+            : (fallos
+                ? 'No fue posible acceder a algunas fotografías. Verifica los permisos de consulta y almacenamiento.'
+                : 'Los reportes aprobados asociados no tienen fotografías registradas.');
+        if (fotografias) contenedor.appendChild(galeria);
+        if (fallos && fotografias) {
+            const aviso=document.createElement('p');
+            aviso.className='aviso';
+            aviso.textContent='Algunas fotografías no pudieron cargarse.';
+            contenedor.appendChild(aviso);
+        }
+    } catch (error) {
+        if (!contenedor.isConnected) return;
+        const mensaje=contenedor.querySelector('.mensaje-fotos');
+        mensaje.className='mensaje-fotos error';
+        mensaje.textContent=error.message;
+    }
+}
+
 function crearTarjetaHueco(hueco, contenedor) {
             const tarjeta = document.createElement('article');
             tarjeta.className = 'estado-hueco';
@@ -1149,11 +1234,21 @@ function crearTarjetaHueco(hueco, contenedor) {
             guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco,selector.value,archivo.files?.[0] || null));
             acciones.append(selector,guardar);
             tarjeta.append(acciones,editor);
+            const fotosCiudadanas = document.createElement('section');
+            fotosCiudadanas.className = 'fotos-ciudadanas';
+            const tituloFotos = document.createElement('h4');
+            tituloFotos.textContent = 'Fotografías originales del reporte ciudadano';
+            const mensajeFotos = document.createElement('p');
+            mensajeFotos.className = 'aviso mensaje-fotos';
+            mensajeFotos.textContent = 'Consultando fotografías ciudadanas...';
+            fotosCiudadanas.append(tituloFotos,mensajeFotos);
+            tarjeta.appendChild(fotosCiudadanas);
             const historial = document.createElement('div');
             historial.className = 'evidencias-historial';
             historial.textContent = 'Consultando evidencias anteriores...';
             tarjeta.appendChild(historial);
             contenedor.appendChild(tarjeta);
+            cargarFotosCiudadanas(hueco.id_hueco,fotosCiudadanas);
             cargarEvidenciasHueco(hueco.id_hueco,historial);
             actualizarEditor();
  }
