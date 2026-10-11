@@ -184,6 +184,15 @@ button:disabled {
     display: none;
 }
 
+/* Fotografías del reporte */
+.fotos-ayuda { color:#52667b; font-size:14px; line-height:1.5; }
+.vista-fotos { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-top:12px; }
+.foto-previa { border:1px solid #cbd6e2; border-radius:9px; padding:8px; background:#f8fafc; overflow:hidden; }
+.foto-previa img { width:100%; height:120px; object-fit:cover; border-radius:5px; }
+.foto-previa small { display:block; overflow-wrap:anywhere; margin-top:6px; }
+#estadoFotos { margin-top:8px; }
+[hidden] { display:none !important; }
+
 .enlace-volver {
     display: inline-block;
     margin-top: 18px;
@@ -337,6 +346,14 @@ button:disabled {
                 ></textarea>
             </div>
 
+            <div class="campo">
+                <label for="fotografias">Fotografías del hueco (opcional, máximo 3)</label>
+                <input id="fotografias" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+                <p class="fotos-ayuda">Hasta 3 fotografías JPG, PNG o WEBP de máximo 2 MB cada una. Podrás revisar las imágenes antes de enviar el reporte.</p>
+                <div id="vistaFotos" class="vista-fotos" aria-live="polite"></div>
+                <p id="estadoFotos" class="aviso" role="status"></p>
+            </div>
+
             <button
                 id="enviarReporte"
                 type="submit"
@@ -368,10 +385,8 @@ button:disabled {
                 Estado: <strong>PENDIENTE</strong>
             </div>
 
-            <p>
-                Tu reporte fue recibido y está pendiente
-                de revisión antes de publicarse.
-            </p>
+            <p>Tu reporte fue recibido y está pendiente de revisión antes de publicarse.</p>
+            <p id="resultadoFotos"></p>
 
             <button
                 id="nuevoReporte"
@@ -430,6 +445,91 @@ const resultadoReporte =
 
 const botonNuevo =
     document.getElementById('nuevoReporte');
+const inputFotos = document.getElementById('fotografias');
+const vistaFotos = document.getElementById('vistaFotos');
+const estadoFotos = document.getElementById('estadoFotos');
+const resultadoFotos = document.getElementById('resultadoFotos');
+const MAX_FOTOS = 3;
+const MAX_BYTES = 2 * 1024 * 1024;
+const TIPOS_FOTOS = ['image/jpeg', 'image/png', 'image/webp'];
+let fotosSeleccionadas = [];
+let urlsPrevias = [];
+
+function limpiarPrevias() {
+    urlsPrevias.forEach(url => URL.revokeObjectURL(url));
+    urlsPrevias = [];
+    vistaFotos.replaceChildren();
+}
+
+function validarFotos(archivos) {
+    if (archivos.length > MAX_FOTOS) return 'Solo puedes seleccionar hasta 3 fotografías.';
+    for (const archivo of archivos) {
+        if (!TIPOS_FOTOS.includes(archivo.type)) return 'Solo se admiten imágenes JPG, PNG y WEBP.';
+        if (archivo.size > MAX_BYTES) return `La imagen "${archivo.name}" supera los 2 MB.`;
+        if (archivo.size === 0) return `La imagen "${archivo.name}" está vacía.`;
+    }
+    return null;
+}
+
+inputFotos.addEventListener('change', () => {
+    if (enviando || reporteRegistrado) return;
+    const archivos = Array.from(inputFotos.files || []);
+    const error = validarFotos(archivos);
+    limpiarPrevias();
+    fotosSeleccionadas = [];
+    if (error) {
+        inputFotos.value = '';
+        estadoFotos.textContent = error;
+        estadoFotos.className = 'error';
+        return;
+    }
+    fotosSeleccionadas = archivos;
+    estadoFotos.textContent = archivos.length ? `${archivos.length} fotografía(s) seleccionada(s).` : '';
+    estadoFotos.className = 'aviso';
+    for (const archivo of archivos) {
+        const url = URL.createObjectURL(archivo);
+        urlsPrevias.push(url);
+        const tarjeta = document.createElement('div');
+        tarjeta.className = 'foto-previa';
+        const imagen = document.createElement('img');
+        imagen.src = url;
+        imagen.alt = 'Vista previa de fotografía del hueco';
+        const nombre = document.createElement('small');
+        nombre.textContent = archivo.name;
+        tarjeta.append(imagen, nombre);
+        vistaFotos.appendChild(tarjeta);
+    }
+});
+
+async function subirFotografias(idReporte, idUsuario) {
+    let registradas = 0;
+    const errores = [];
+    for (let i = 0; i < fotosSeleccionadas.length; i++) {
+        const archivo = fotosSeleccionadas[i];
+        const extension = archivo.type === 'image/png' ? 'png' : archivo.type === 'image/webp' ? 'webp' : 'jpg';
+        const ruta = `${idReporte}/${idUsuario}/${crypto.randomUUID()}.${extension}`;
+        estadoEnvio.textContent = `Subiendo fotografía ${i + 1} de ${fotosSeleccionadas.length}...`;
+        const { error: errorSubida } = await supabase.storage
+            .from('fotografias-huecos')
+            .upload(ruta, archivo, { contentType: archivo.type, upsert: false });
+        if (errorSubida) {
+            errores.push(`Fotografía ${i + 1}: ${errorSubida.message}`);
+            continue;
+        }
+        const { error: errorRegistro } = await supabase.rpc('registrar_fotografia_hueco', {
+            p_id_reporte: idReporte,
+            p_ruta_imagen: ruta
+        });
+        if (errorRegistro) {
+            errores.push(`Fotografía ${i + 1}: no se pudo vincular al reporte (${errorRegistro.message}).`);
+            // No hay permiso de borrado para el ciudadano; el archivo no vinculado
+            // deberá revisarse posteriormente por un administrador.
+            continue;
+        }
+        registradas++;
+    }
+    return { registradas, errores };
+}
 
 /* Variables */
 
@@ -835,7 +935,24 @@ formulario.addEventListener('submit', async (evento) => {
             );
         }
 
+        // El reporte ya está confirmado. Si una foto falla, NO volver a crear el reporte.
         reporteRegistrado = true;
+        let resumenFotos = '';
+        if (fotosSeleccionadas.length) {
+            try {
+                const resultado = await subirFotografias(registro.id_reporte, usuario.user.id);
+                resumenFotos = `${resultado.registradas} de ${fotosSeleccionadas.length} fotografía(s) guardada(s).`;
+                if (resultado.errores.length) {
+                    resumenFotos += ' Algunas imágenes no pudieron guardarse: ' + resultado.errores.join(' ');
+                }
+            } catch (errorFotos) {
+                resumenFotos = 'El reporte se registró, pero ocurrió un problema al cargar las fotografías: ' +
+                    (errorFotos.message || 'Error desconocido.');
+            }
+        } else {
+            resumenFotos = 'No se adjuntaron fotografías.';
+        }
+        resultadoFotos.textContent = resumenFotos;
 
         document.getElementById('numeroReporte').textContent =
             registro.id_reporte;
@@ -891,6 +1008,10 @@ botonNuevo.addEventListener('click', () => {
     reporteRegistrado = false;
 
     formulario.reset();
+    fotosSeleccionadas = [];
+    limpiarPrevias();
+    estadoFotos.textContent = '';
+    resultadoFotos.textContent = '';
     formulario.hidden = false;
 
     resultadoReporte.hidden = true;
