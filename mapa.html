@@ -219,6 +219,42 @@ button:disabled{
     .leyenda{gap:10px}
     .leyenda-item{width:100%}
 }
+
+/* Leyenda interactiva */
+.leyenda-item{
+    background:#fff;
+    border:1px solid #d6e1ec;
+    border-radius:9px;
+    padding:11px 13px;
+    cursor:pointer;
+    color:#183153;
+    text-align:left;
+    justify-content:space-between;
+    width:100%;
+    transition:background .15s,border-color .15s;
+}
+.leyenda-item:hover{background:#f0f6fc}
+.leyenda-item.activo{
+    background:#edf4fa;
+    border-color:#115b99;
+    box-shadow:inset 0 0 0 1px #115b99;
+}
+.leyenda-item:focus-visible{outline:3px solid #76a9dd;outline-offset:2px}
+.leyenda-nombre{display:flex;align-items:center;gap:10px}
+.leyenda-cantidad{
+    font-size:15px;
+    font-weight:bold;
+    min-width:28px;
+    text-align:right;
+}
+#mostrarTodos{
+    background:#52667b;
+    margin-bottom:18px;
+}
+@media(min-width:750px){
+    .leyenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+}
+
 </style>
 </head>
 
@@ -246,24 +282,21 @@ button:disabled{
 
     <!-- Leyenda de estados -->
 
-    <div class="leyenda">
-
-        <div class="leyenda-item">
-            <span class="punto-leyenda rojo"></span>
-            <span>HUECO REPORTADO</span>
-        </div>
-
-        <div class="leyenda-item">
-            <span class="punto-leyenda amarillo"></span>
-            <span>HUECO EN REPARACIÓN</span>
-        </div>
-
-        <div class="leyenda-item">
-            <span class="punto-leyenda verde"></span>
-            <span>HUECO REPARADO</span>
-        </div>
-
+    <div class="leyenda" aria-label="Filtrar huecos por estado">
+        <button class="leyenda-item" type="button" data-estado="REPORTADO" aria-pressed="false">
+            <span class="leyenda-nombre"><span class="punto-leyenda rojo"></span>HUECO REPORTADO</span>
+            <span class="leyenda-cantidad" id="cantidadReportados">0</span>
+        </button>
+        <button class="leyenda-item" type="button" data-estado="REPARACION_REPORTADA" aria-pressed="false">
+            <span class="leyenda-nombre"><span class="punto-leyenda amarillo"></span>HUECO EN REPARACIÓN</span>
+            <span class="leyenda-cantidad" id="cantidadReparacion">0</span>
+        </button>
+        <button class="leyenda-item" type="button" data-estado="REPARADO" aria-pressed="false">
+            <span class="leyenda-nombre"><span class="punto-leyenda verde"></span>HUECO REPARADO</span>
+            <span class="leyenda-cantidad" id="cantidadReparados">0</span>
+        </button>
     </div>
+    <button id="mostrarTodos" type="button" hidden>Mostrar todos los huecos</button>
 
     <div id="mapa"
          aria-label="Mapa público de huecos en Villavicencio">
@@ -299,6 +332,16 @@ const actualizar=document.getElementById('actualizar');
 let mapa;
 let marcadores;
 let cargando=false;
+let filtroActivo=null;
+let huecosMapa=[];
+
+const botonesFiltro=[...document.querySelectorAll('.leyenda-item[data-estado]')];
+const mostrarTodos=document.getElementById('mostrarTodos');
+const contadoresEstado={
+    REPORTADO:document.getElementById('cantidadReportados'),
+    REPARACION_REPORTADA:document.getElementById('cantidadReparacion'),
+    REPARADO:document.getElementById('cantidadReparados')
+};
 
 /* Configuración de estados */
 
@@ -311,7 +354,7 @@ const estados={
     },
 
     REPARACION_REPORTADA:{
-        texto:'HUECO PENDIENTE DE REPARACIÓN',
+        texto:'HUECO EN REPARACIÓN',
         color:'#e9a600',
         clase:'estado-pendiente'
     },
@@ -448,110 +491,105 @@ function crearPopup(hueco){
     return contenedor;
 }
 
+function actualizarLeyenda(){
+    const cantidades={REPORTADO:0,REPARACION_REPORTADA:0,REPARADO:0};
+    for(const hueco of huecosMapa){
+        if(Object.prototype.hasOwnProperty.call(cantidades,hueco.estado)){
+            cantidades[hueco.estado]++;
+        }
+    }
+    for(const [clave,elemento] of Object.entries(contadoresEstado)){
+        elemento.textContent=cantidades[clave];
+    }
+    totalHuecos.textContent=huecosMapa.length;
+    botonesFiltro.forEach(boton=>{
+        const seleccionado=boton.dataset.estado===filtroActivo;
+        boton.classList.toggle('activo',seleccionado);
+        boton.setAttribute('aria-pressed',String(seleccionado));
+    });
+    mostrarTodos.hidden=!filtroActivo;
+}
+
+function dibujarHuecos(){
+    if(!mapa||!marcadores)return;
+    marcadores.clearLayers();
+    const visibles=huecosMapa.filter(hueco=>!filtroActivo||hueco.estado===filtroActivo);
+
+    for(const hueco of visibles){
+        const marcador=L.marker([hueco.lat,hueco.lng],{
+            icon:crearIcono(hueco.estado)
+        });
+        marcador.bindPopup(crearPopup(hueco));
+        marcadores.addLayer(marcador);
+    }
+
+    actualizarLeyenda();
+    if(visibles.length){
+        mapa.fitBounds(marcadores.getBounds(),{padding:[35,35],maxZoom:16});
+    }
+
+    if(filtroActivo){
+        mostrarEstado(
+            'Mostrando '+visibles.length+' hueco(s) de '+estados[filtroActivo].texto+
+            '. Total publicados: '+huecosMapa.length+'.',
+            'correcto'
+        );
+    }else{
+        mostrarEstado(
+            huecosMapa.length
+                ? 'Se encontraron '+huecosMapa.length+' hueco(s) publicados.'
+                : 'Actualmente no hay huecos aprobados para mostrar.',
+            'correcto'
+        );
+    }
+}
+
+botonesFiltro.forEach(boton=>{
+    boton.addEventListener('click',()=>{
+        filtroActivo=filtroActivo===boton.dataset.estado?null:boton.dataset.estado;
+        dibujarHuecos();
+    });
+});
+mostrarTodos.addEventListener('click',()=>{
+    filtroActivo=null;
+    dibujarHuecos();
+});
+
 async function cargarHuecos(){
-
     if(!mapa||cargando)return;
-
     cargando=true;
     actualizar.disabled=true;
-
     mostrarEstado('Consultando huecos aprobados...');
 
     try{
-
-        /*
-          La política RLS de public.huecos
-          determina cuáles huecos son visibles
-          para los visitantes.
-        */
-
+        // Se mantienen las mismas reglas de visibilidad RLS y columnas originales.
         const {data,error}=await supabase
             .from('huecos')
-            .select(
-                'id_hueco,latitud,longitud,direccion,gravedad,estado'
-            )
+            .select('id_hueco,latitud,longitud,direccion,gravedad,estado')
             .order('id_hueco',{ascending:false})
             .limit(1000);
 
         if(error)throw error;
 
-        const huecos=data||[];
-
-        marcadores.clearLayers();
-
-        let publicados=0;
-
-        for(const hueco of huecos){
-
+        const validos=[];
+        for(const hueco of data||[]){
             const lat=Number(hueco.latitud);
             const lng=Number(hueco.longitud);
-
             if(
-                hueco.latitud===null||
-                hueco.longitud===null||
-                !Number.isFinite(lat)||
-                !Number.isFinite(lng)||
-                lat < -90 || lat > 90 ||
-                lng < -180 || lng > 180
-            ){
-                continue;
-            }
-
-            const marcador=L.marker(
-                [lat,lng],
-                {
-                    icon:crearIcono(hueco.estado)
-                }
-            );
-
-            marcador.bindPopup(
-                crearPopup(hueco)
-            );
-
-            marcadores.addLayer(marcador);
-
-            publicados++;
+                hueco.latitud===null||hueco.longitud===null||
+                !Number.isFinite(lat)||!Number.isFinite(lng)||
+                lat < -90||lat > 90||lng < -180||lng > 180
+            )continue;
+            validos.push({...hueco,lat,lng});
         }
 
-        totalHuecos.textContent=publicados;
-
-        if(publicados===0){
-
-            mostrarEstado(
-                'Actualmente no hay huecos aprobados para mostrar.',
-                'correcto'
-            );
-
-        }else{
-
-            mostrarEstado(
-                'Se encontraron '+publicados+
-                ' hueco(s) publicados.',
-                'correcto'
-            );
-
-            mapa.fitBounds(
-                marcadores.getBounds(),
-                {
-                    padding:[35,35],
-                    maxZoom:16
-                }
-            );
-        }
-
+        huecosMapa=validos;
+        dibujarHuecos();
     }catch(error){
-
-        mostrarEstado(
-            'No fue posible consultar los huecos: '+
-            error.message,
-            'error'
-        );
-
+        mostrarEstado('No fue posible consultar los huecos: '+error.message,'error');
     }finally{
-
         cargando=false;
         actualizar.disabled=false;
-
     }
 }
 
