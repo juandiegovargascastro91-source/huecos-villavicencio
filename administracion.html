@@ -399,6 +399,9 @@ async function verificarAcceso() {
             .select('rol,estado')
             .eq('id_autenticacion', usuarioActual.id)
             .maybeSingle();
+        console.log('PERFIL:', perfil);
+console.log('ERROR PERFIL:', errorPerfil);
+console.log('USUARIO ACTUAL:', usuarioActual.id);
 
         esAdministrador = !errorPerfil && perfil?.rol === 'ADMINISTRADOR' && perfil?.estado === true;
         if (esAdministrador) panelEstados.classList.remove('oculto');
