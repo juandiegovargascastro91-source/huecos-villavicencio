@@ -191,6 +191,11 @@ button:disabled {
 .foto-previa img { width:100%; height:120px; object-fit:cover; border-radius:5px; }
 .foto-previa small { display:block; overflow-wrap:anywhere; margin-top:6px; }
 #estadoFotos { margin-top:8px; }
+.acciones-fotos { display:flex; flex-wrap:wrap; gap:10px; margin:10px 0; }
+.acciones-fotos button { flex:1 1 190px; }
+.foto-previa button { background:#a12323; padding:7px 10px; font-size:13px; margin-top:8px; }
+.foto-previa button:hover:not(:disabled) { background:#801b1b; }
+.foto-previa small { line-height:1.4; }
 [hidden] { display:none !important; }
 
 .enlace-volver {
@@ -333,23 +338,14 @@ button:disabled {
             </div>
 
             <div class="campo">
-                <label for="descripcion">
-                    Descripción del hueco
-                    <span class="obligatorio">*</span>
-                </label>
-
-                <textarea
-                    id="descripcion"
-                    maxlength="1500"
-                    placeholder="Describe el tamaño aproximado, la ubicación y los riesgos que representa."
-                    required
-                ></textarea>
-            </div>
-
-            <div class="campo">
                 <label for="fotografias">Fotografías del hueco (opcional, máximo 3)</label>
-                <input id="fotografias" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-                <p class="fotos-ayuda">Hasta 3 fotografías JPG, PNG o WEBP de máximo 2 MB cada una. Podrás revisar las imágenes antes de enviar el reporte.</p>
+                <div class="acciones-fotos">
+                    <button id="tomarFoto" type="button">📷 Tomar fotografía</button>
+                    <button id="elegirFotos" type="button">🖼️ Elegir de galería</button>
+                </div>
+                <input id="camara" type="file" accept="image/*" capture="environment" hidden aria-label="Tomar fotografía con la cámara">
+                <input id="fotografias" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple hidden aria-label="Seleccionar fotografías de la galería">
+                <p class="fotos-ayuda">Máximo 3 fotografías. Se comprimen automáticamente a JPG antes de subirlas (menos de 2 MB cada una). Puedes revisar y quitar imágenes antes de enviar el reporte. La cámara depende del navegador y del dispositivo.</p>
                 <div id="vistaFotos" class="vista-fotos" aria-live="polite"></div>
                 <p id="estadoFotos" class="aviso" role="status"></p>
             </div>
@@ -446,14 +442,18 @@ const resultadoReporte =
 const botonNuevo =
     document.getElementById('nuevoReporte');
 const inputFotos = document.getElementById('fotografias');
+const inputCamara = document.getElementById('camara');
+const botonCamara = document.getElementById('tomarFoto');
+const botonGaleria = document.getElementById('elegirFotos');
 const vistaFotos = document.getElementById('vistaFotos');
 const estadoFotos = document.getElementById('estadoFotos');
 const resultadoFotos = document.getElementById('resultadoFotos');
 const MAX_FOTOS = 3;
 const MAX_BYTES = 2 * 1024 * 1024;
-const TIPOS_FOTOS = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_ORIGINAL_BYTES = 25 * 1024 * 1024;
 let fotosSeleccionadas = [];
 let urlsPrevias = [];
+let procesandoFotos = false;
 
 function limpiarPrevias() {
     urlsPrevias.forEach(url => URL.revokeObjectURL(url));
@@ -461,45 +461,134 @@ function limpiarPrevias() {
     vistaFotos.replaceChildren();
 }
 
-function validarFotos(archivos) {
-    if (archivos.length > MAX_FOTOS) return 'Solo puedes seleccionar hasta 3 fotografías.';
-    for (const archivo of archivos) {
-        if (!TIPOS_FOTOS.includes(archivo.type)) return 'Solo se admiten imágenes JPG, PNG y WEBP.';
-        if (archivo.size > MAX_BYTES) return `La imagen "${archivo.name}" supera los 2 MB.`;
-        if (archivo.size === 0) return `La imagen "${archivo.name}" está vacía.`;
-    }
-    return null;
+function controlesFotos() {
+    const bloqueado = enviando || reporteRegistrado || procesandoFotos;
+    botonCamara.disabled = bloqueado || fotosSeleccionadas.length >= MAX_FOTOS;
+    botonGaleria.disabled = bloqueado || fotosSeleccionadas.length >= MAX_FOTOS;
+    inputCamara.disabled = bloqueado;
+    inputFotos.disabled = bloqueado;
+    actualizarBotonEnvio();
 }
 
-inputFotos.addEventListener('change', () => {
-    if (enviando || reporteRegistrado) return;
-    const archivos = Array.from(inputFotos.files || []);
-    const error = validarFotos(archivos);
+function mostrarFotos() {
     limpiarPrevias();
-    fotosSeleccionadas = [];
-    if (error) {
-        inputFotos.value = '';
-        estadoFotos.textContent = error;
-        estadoFotos.className = 'error';
-        return;
-    }
-    fotosSeleccionadas = archivos;
-    estadoFotos.textContent = archivos.length ? `${archivos.length} fotografía(s) seleccionada(s).` : '';
-    estadoFotos.className = 'aviso';
-    for (const archivo of archivos) {
+    fotosSeleccionadas.forEach((archivo, indice) => {
         const url = URL.createObjectURL(archivo);
         urlsPrevias.push(url);
         const tarjeta = document.createElement('div');
         tarjeta.className = 'foto-previa';
         const imagen = document.createElement('img');
         imagen.src = url;
-        imagen.alt = 'Vista previa de fotografía del hueco';
+        imagen.alt = `Vista previa de fotografía ${indice + 1}`;
         const nombre = document.createElement('small');
-        nombre.textContent = archivo.name;
-        tarjeta.append(imagen, nombre);
+        nombre.textContent = `${archivo.name} · ${(archivo.size / 1024).toFixed(0)} KB`;
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.textContent = 'Quitar fotografía';
+        quitar.addEventListener('click', () => {
+            if (enviando || reporteRegistrado || procesandoFotos) return;
+            fotosSeleccionadas.splice(indice, 1);
+            mostrarFotos();
+            estadoFotos.textContent = `${fotosSeleccionadas.length} de ${MAX_FOTOS} fotografías listas.`;
+            estadoFotos.className = 'aviso';
+        });
+        tarjeta.append(imagen, nombre, quitar);
         vistaFotos.appendChild(tarjeta);
+    });
+    controlesFotos();
+}
+
+function imagenCargada(archivo) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(archivo);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer esta imagen. Intenta con JPG o PNG.')); };
+        img.src = url;
+    });
+}
+
+function convertirAJpeg(canvas, calidad) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+            if (!blob) reject(new Error('No se pudo comprimir la fotografía.'));
+            else resolve(blob);
+        }, 'image/jpeg', calidad);
+    });
+}
+
+async function comprimirFotografia(archivo) {
+    if (!archivo || !archivo.size || archivo.size > MAX_ORIGINAL_BYTES) {
+        throw new Error('La fotografía original está vacía o supera 25 MB.');
     }
-});
+    if (!archivo.type.startsWith('image/')) {
+        throw new Error('El archivo seleccionado no es una imagen.');
+    }
+    const imagen = await imagenCargada(archivo);
+    const anchoOriginal = imagen.naturalWidth;
+    const altoOriginal = imagen.naturalHeight;
+    if (!anchoOriginal || !altoOriginal) throw new Error('La fotografía no es válida.');
+    let escala = Math.min(1, 1600 / Math.max(anchoOriginal, altoOriginal));
+    let ancho = Math.max(1, Math.round(anchoOriginal * escala));
+    let alto = Math.max(1, Math.round(altoOriginal * escala));
+    const canvas = document.createElement('canvas');
+    const contexto = canvas.getContext('2d');
+    if (!contexto) throw new Error('El navegador no permite comprimir fotografías.');
+    let blob = null;
+    for (let intento = 0; intento < 7; intento++) {
+        canvas.width = ancho;
+        canvas.height = alto;
+        contexto.fillStyle = '#ffffff';
+        contexto.fillRect(0, 0, ancho, alto);
+        contexto.drawImage(imagen, 0, 0, ancho, alto);
+        blob = await convertirAJpeg(canvas, intento < 3 ? 0.82 - intento * 0.13 : 0.60);
+        if (blob.size <= MAX_BYTES) break;
+        ancho = Math.max(1, Math.round(ancho * 0.78));
+        alto = Math.max(1, Math.round(alto * 0.78));
+    }
+    canvas.width = canvas.height = 0;
+    if (!blob || blob.size > MAX_BYTES) throw new Error('No fue posible reducir la fotografía a 2 MB.');
+    const nombre = `hueco_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+    return new File([blob], nombre, { type: 'image/jpeg', lastModified: Date.now() });
+}
+
+async function incorporarFotos(input) {
+    if (enviando || reporteRegistrado || procesandoFotos) return;
+    const archivos = Array.from(input.files || []);
+    input.value = '';
+    if (!archivos.length) return;
+    if (fotosSeleccionadas.length + archivos.length > MAX_FOTOS) {
+        estadoFotos.textContent = `Solo se permiten ${MAX_FOTOS} fotografías en total. Ya tienes ${fotosSeleccionadas.length}.`;
+        estadoFotos.className = 'error';
+        return;
+    }
+    procesandoFotos = true;
+    controlesFotos();
+    const errores = [];
+    try {
+        for (let i = 0; i < archivos.length; i++) {
+            estadoFotos.textContent = `Comprimiendo fotografía ${i + 1} de ${archivos.length}...`;
+            estadoFotos.className = 'aviso';
+            try {
+                const comprimida = await comprimirFotografia(archivos[i]);
+                fotosSeleccionadas.push(comprimida);
+            } catch (error) {
+                errores.push(`${archivos[i].name}: ${error.message}`);
+            }
+        }
+    } finally {
+        procesandoFotos = false;
+        mostrarFotos();
+        estadoFotos.textContent = `${fotosSeleccionadas.length} fotografía(s) lista(s) para enviar.` +
+            (errores.length ? ' No se procesaron: ' + errores.join(' ') : '');
+        estadoFotos.className = errores.length ? 'error' : 'correcto';
+    }
+}
+
+botonCamara.addEventListener('click', () => inputCamara.click());
+botonGaleria.addEventListener('click', () => inputFotos.click());
+inputCamara.addEventListener('change', () => incorporarFotos(inputCamara));
+inputFotos.addEventListener('change', () => incorporarFotos(inputFotos));
 
 async function subirFotografias(idReporte, idUsuario) {
     let registradas = 0;
@@ -566,7 +655,8 @@ function actualizarBotonEnvio() {
             coordenadas.longitud
         ) ||
         enviando ||
-        reporteRegistrado;
+        reporteRegistrado ||
+        procesandoFotos;
 }
 
 /* Seleccionar ubicación */
@@ -811,7 +901,7 @@ formulario.addEventListener('submit', async (evento) => {
 
     evento.preventDefault();
 
-    if (enviando || reporteRegistrado) {
+    if (enviando || reporteRegistrado || procesandoFotos) {
         return;
     }
 
@@ -854,13 +944,10 @@ formulario.addEventListener('submit', async (evento) => {
     const gravedad =
         document.getElementById('gravedad').value;
 
-    const descripcion =
-        document.getElementById('descripcion').value.trim();
-
-    if (!direccion || !descripcion) {
+    if (!direccion) {
 
         estadoEnvio.textContent =
-            'Completa la dirección y la descripción.';
+            'Completa la dirección o punto de referencia.';
 
         estadoEnvio.className = 'error';
 
@@ -881,6 +968,7 @@ formulario.addEventListener('submit', async (evento) => {
 
     botonEnviar.disabled = true;
     botonGPS.disabled = true;
+    controlesFotos();
 
     if (marcador) {
         marcador.dragging.disable();
@@ -910,7 +998,7 @@ formulario.addEventListener('submit', async (evento) => {
                 p_longitud: coordenadas.longitud,
                 p_id_sector: null,
                 p_direccion: direccion,
-                p_descripcion: descripcion,
+                p_descripcion: null,
                 p_gravedad: gravedad
             }
         );
@@ -997,7 +1085,7 @@ formulario.addEventListener('submit', async (evento) => {
             }
         }
 
-        actualizarBotonEnvio();
+        controlesFotos();
     }
 });
 
@@ -1010,6 +1098,8 @@ botonNuevo.addEventListener('click', () => {
     formulario.reset();
     fotosSeleccionadas = [];
     limpiarPrevias();
+    inputCamara.value = '';
+    inputFotos.value = '';
     estadoFotos.textContent = '';
     resultadoFotos.textContent = '';
     formulario.hidden = false;
@@ -1048,7 +1138,7 @@ botonNuevo.addEventListener('click', () => {
         13
     );
 
-    actualizarBotonEnvio();
+    controlesFotos();
 });
 
 /* Verificar sesión */
