@@ -285,10 +285,10 @@ button:disabled{
 
     <section id="panelEstados" class="panel oculto">
         <div class="barra">
-            <h2>Administración de huecos</h2>
+            <h2>Historial y administración de huecos aprobados</h2>
             <button id="actualizarHuecos" type="button">Actualizar huecos</button>
         </div>
-        <p class="aviso">Solo los administradores pueden modificar el estado de los huecos publicados.</p>
+        <p class="aviso">Consulta los huecos publicados y cambia su estado. Solo los administradores activos pueden guardar cambios.</p>
         <p id="mensajeHuecos" class="aviso" role="status" aria-live="polite"></p>
         <div id="listaHuecos"></div>
     </section>
@@ -392,19 +392,23 @@ async function verificarAcceso() {
         botonCerrar.classList.remove('oculto');
         contenido.classList.remove('oculto');
 
-        // El acceso a la revisión de reportes también lo tienen los revisores.
-        // La sección de estados solo se muestra a administradores activos.
-        const {data: perfil, error: errorPerfil} = await supabase
-            .from('revisores')
-            .select('rol,estado')
-            .eq('id_autenticacion', usuarioActual.id)
-            .maybeSingle();
-        console.log('PERFIL:', perfil);
-console.log('ERROR PERFIL:', errorPerfil);
-console.log('USUARIO ACTUAL:', usuarioActual.id);
+        // Verificación del rol mediante una función segura de Supabase.
+        // La revisión de reportes permanece disponible para revisores autorizados.
+        const { data: permisoAdministrador, error: errorAdministrador } =
+            await supabase.rpc('es_administrador_activo');
 
-        esAdministrador = !errorPerfil && perfil?.rol === 'ADMINISTRADOR' && perfil?.estado === true;
-        if (esAdministrador) panelEstados.classList.remove('oculto');
+        if (errorAdministrador) {
+            esAdministrador = false;
+            panelEstados.classList.add('oculto');
+            mostrarMensaje(
+                'No fue posible comprobar el rol de administrador: ' +
+                errorAdministrador.message,
+                'error'
+            );
+        } else {
+            esAdministrador = permisoAdministrador === true;
+            panelEstados.classList.toggle('oculto', !esAdministrador);
+        }
 
         await cargarReportes();
         if (esAdministrador) await cargarHuecos();
