@@ -1085,12 +1085,10 @@ limpiarBusqueda.addEventListener('click', () => {
 async function cargarFotosCiudadanas(idHueco, contenedor) {
     try {
         // Relacionar el hueco con sus reportes aprobados, sin mostrar pendientes ni rechazados.
-        const {data:reportes,error:errorReportes} = await supabase
-            .from('reportes')
-            .select('id_reporte')
-            .eq('id_hueco',idHueco)
-            .eq('estado_validacion','APROBADO')
-            .order('id_reporte',{ascending:false});
+        const {data:reportes,error:errorReportes} = await supabase.rpc(
+            'consultar_reportes_aprobados_hueco',
+            {p_id_hueco:idHueco}
+        );
         if (!contenedor.isConnected) return;
         if (errorReportes) throw new Error('No fue posible consultar los reportes asociados: '+errorReportes.message);
 
