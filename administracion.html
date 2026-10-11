@@ -4,211 +4,213 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Administración | HUECOS VILLAVICENCIO</title>
 
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 
 <style>
-* {
-    box-sizing: border-box;
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    background:#f3f6fa;
+    color:#183153;
+    font-family:Arial,sans-serif;
 }
 
-body {
-    margin: 0;
-    background: #f3f6fa;
-    color: #183153;
-    font-family: Arial, sans-serif;
+header{
+    background:#12345a;
+    color:white;
+    text-align:center;
+    padding:25px 15px;
 }
 
-header {
-    background: #12345a;
-    color: white;
-    padding: 24px 20px;
-    text-align: center;
+header h1{
+    margin:0 0 8px;
+    font-size:25px;
 }
 
-header h1 {
-    margin: 0 0 8px;
-    font-size: 25px;
+header p{margin:0}
+
+main{
+    max-width:1150px;
+    margin:25px auto;
+    padding:15px;
 }
 
-header p {
-    margin: 0;
+.panel{
+    background:white;
+    padding:24px;
+    border-radius:13px;
+    box-shadow:0 4px 18px #00000012;
+    margin-bottom:20px;
 }
 
-main {
-    max-width: 1150px;
-    margin: 25px auto;
-    padding: 15px;
+.barra{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
 }
 
-.panel {
-    background: white;
-    padding: 24px;
-    border-radius: 13px;
-    box-shadow: 0 4px 18px #00000012;
-    margin-bottom: 20px;
+h2{margin-top:0}
+
+button{
+    background:#115b99;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:12px 18px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:bold;
 }
 
-.barra {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
+button:disabled{
+    opacity:.6;
+    cursor:not-allowed;
 }
 
-h2 {
-    margin-top: 0;
+.secundario{background:#52667b}
+.aprobar{background:#167346}
+.rechazar{background:#b33434}
+
+.acciones{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:18px;
 }
 
-button {
-    background: #115b99;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 18px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
+.aviso{
+    color:#52667b;
+    line-height:1.6;
 }
 
-button:hover {
-    background: #0d4778;
+.error{color:#a12323}
+.correcto{color:#12623c}
+
+.resumen{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:15px;
+    margin-bottom:20px;
 }
 
-button:disabled {
-    opacity: .6;
-    cursor: not-allowed;
+.indicador{
+    background:white;
+    padding:22px;
+    border-radius:12px;
+    text-align:center;
+    box-shadow:0 4px 15px #00000010;
 }
 
-.secundario {
-    background: #52667b;
+.indicador strong{
+    display:block;
+    font-size:32px;
+    color:#115b99;
+    margin-bottom:8px;
 }
 
-.aprobar {
-    background: #167346;
+.reporte{
+    border:1px solid #d6e1ec;
+    border-radius:12px;
+    padding:20px;
+    margin-top:18px;
 }
 
-.rechazar {
-    background: #b33434;
+.reporte h3{margin-top:0}
+
+.detalle{
+    line-height:1.9;
+    overflow-wrap:anywhere;
 }
 
-.acciones {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
+.etiqueta{
+    display:inline-block;
+    padding:6px 11px;
+    border-radius:7px;
+    background:#fff3cf;
+    color:#795500;
+    font-size:13px;
+    font-weight:bold;
 }
 
-.aviso {
-    color: #52667b;
-    line-height: 1.6;
+.mapa-reporte{
+    width:100%;
+    height:280px;
+    margin-top:15px;
+    border:1px solid #d6e1ec;
+    border-radius:10px;
+    overflow:hidden;
 }
 
-.error {
-    color: #a12323;
+.seccion-foto{
+    margin-top:20px;
+    padding:15px;
+    background:#edf4fa;
+    border-radius:10px;
 }
 
-.correcto {
-    color: #12623c;
+.seccion-foto h4{
+    margin:0 0 12px;
 }
 
-.resumen {
-    display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(180px, 1fr)
-    );
-    gap: 15px;
-    margin-bottom: 20px;
+.imagen-reporte{
+    display:block;
+    max-width:100%;
+    max-height:440px;
+    width:auto;
+    height:auto;
+    margin:0 auto;
+    border-radius:9px;
+    cursor:zoom-in;
+    object-fit:contain;
 }
 
-.indicador {
-    background: white;
-    padding: 22px;
-    border-radius: 12px;
-    text-align: center;
-    box-shadow: 0 4px 15px #00000010;
+.contenedor-imagen{
+    background:white;
+    border-radius:9px;
+    padding:10px;
+    text-align:center;
 }
 
-.indicador strong {
-    display: block;
-    font-size: 32px;
-    color: #115b99;
-    margin-bottom: 8px;
+.visor{
+    position:fixed;
+    inset:0;
+    z-index:10000;
+    background:rgba(0,0,0,.92);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:55px 15px 20px;
 }
 
-.reporte {
-    border: 1px solid #d6e1ec;
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 18px;
+.visor img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
 }
 
-.reporte h3 {
-    margin-top: 0;
+.cerrar-visor{
+    position:absolute;
+    top:12px;
+    right:15px;
+    background:#ffffff;
+    color:#12345a;
+    font-size:18px;
 }
 
-.detalle {
-    line-height: 1.9;
-    overflow-wrap: anywhere;
-}
+.oculto{display:none!important}
 
-.etiqueta {
-    display: inline-block;
-    padding: 6px 11px;
-    border-radius: 7px;
-    background: #fff3cf;
-    color: #795500;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-.mapa-reporte {
-    width: 100%;
-    height: 280px;
-    margin-top: 15px;
-    border-radius: 10px;
-    border: 1px solid #d6e1ec;
-    overflow: hidden;
-}
-
-.fotografia {
-    margin-top: 12px;
-    padding: 12px;
-    background: #edf4fa;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.oculto {
-    display: none !important;
-}
-
-@media(max-width:600px) {
-    main {
-        margin: 10px auto;
-        padding: 10px;
-    }
-
-    .panel {
-        padding: 16px;
-    }
-
-    header h1 {
-        font-size: 21px;
-    }
-
-    .mapa-reporte {
-        height: 240px;
-    }
-
-    .acciones button {
-        flex: 1;
-    }
+@media(max-width:600px){
+    main{margin:10px auto;padding:10px}
+    .panel{padding:16px}
+    header h1{font-size:21px}
+    .mapa-reporte{height:240px}
+    .acciones button{flex:1}
+    .imagen-reporte{max-height:350px}
 }
 </style>
 </head>
@@ -222,74 +224,74 @@ button:disabled {
 
 <main>
 
+<section class="panel">
+    <div class="barra">
+        <div>
+            <h2>Administración de reportes</h2>
+            <p id="usuario" class="aviso">
+                Verificando acceso...
+            </p>
+        </div>
+
+        <button
+            id="cerrarSesion"
+            class="secundario oculto"
+            type="button">
+            Cerrar sesión
+        </button>
+    </div>
+
+    <p id="mensajeGeneral"
+       class="aviso"
+       role="status"
+       aria-live="polite"></p>
+</section>
+
+<div id="contenido" class="oculto">
+
+    <section class="resumen">
+        <div class="indicador">
+            <strong id="totalPendientes">0</strong>
+            Reportes pendientes
+        </div>
+    </section>
+
     <section class="panel">
 
         <div class="barra">
-
-            <div>
-                <h2>Administración de reportes</h2>
-
-                <p id="usuario"
-                   class="aviso">
-                    Verificando acceso...
-                </p>
-            </div>
-
-            <button
-                id="cerrarSesion"
-                class="secundario oculto"
-                type="button">
-                Cerrar sesión
+            <h2>Reportes pendientes de revisión</h2>
+            <button id="actualizar" type="button">
+                Actualizar
             </button>
-
         </div>
 
-        <p id="mensajeGeneral"
-           class="aviso"
-           role="status"
-           aria-live="polite">
+        <p class="aviso">
+            Verifica la ubicación y la fotografía
+            antes de aprobar o rechazar cada reporte.
         </p>
+
+        <div id="listaReportes"></div>
 
     </section>
 
-    <div id="contenido" class="oculto">
-
-        <section class="resumen">
-
-            <div class="indicador">
-                <strong id="totalPendientes">0</strong>
-                Reportes pendientes
-            </div>
-
-        </section>
-
-        <section class="panel">
-
-            <div class="barra">
-
-                <h2>Reportes pendientes de revisión</h2>
-
-                <button
-                    id="actualizar"
-                    type="button">
-                    Actualizar
-                </button>
-
-            </div>
-
-            <p class="aviso">
-                Revisa la ubicación y la información
-                de cada reporte antes de aprobarlo
-                o rechazarlo.
-            </p>
-
-            <div id="listaReportes"></div>
-
-        </section>
-
-    </div>
+</div>
 
 </main>
+
+<div id="visorImagen" class="visor oculto"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Fotografía ampliada">
+
+    <button id="cerrarVisor"
+            class="cerrar-visor"
+            type="button">
+        Cerrar ✕
+    </button>
+
+    <img id="imagenAmpliada"
+         alt="Fotografía ampliada del hueco">
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
@@ -298,92 +300,71 @@ button:disabled {
 import { createClient } from
 'https://esm.sh/@supabase/supabase-js@2';
 
-/* CONEXIÓN SUPABASE */
-
 const supabase = createClient(
     'https://svwsaunrxskdifvsillz.supabase.co',
     'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
 );
 
-/* ELEMENTOS */
+const BUCKET = 'fotografias-huecos';
 
 const usuario = document.getElementById('usuario');
-
-const mensajeGeneral =
-    document.getElementById('mensajeGeneral');
-
-const contenido =
-    document.getElementById('contenido');
-
-const listaReportes =
-    document.getElementById('listaReportes');
-
-const totalPendientes =
-    document.getElementById('totalPendientes');
-
-const botonCerrar =
-    document.getElementById('cerrarSesion');
-
-const botonActualizar =
-    document.getElementById('actualizar');
+const mensajeGeneral = document.getElementById('mensajeGeneral');
+const contenido = document.getElementById('contenido');
+const listaReportes = document.getElementById('listaReportes');
+const totalPendientes = document.getElementById('totalPendientes');
+const botonCerrar = document.getElementById('cerrarSesion');
+const botonActualizar = document.getElementById('actualizar');
+const visorImagen = document.getElementById('visorImagen');
+const imagenAmpliada = document.getElementById('imagenAmpliada');
+const cerrarVisor = document.getElementById('cerrarVisor');
 
 let autorizado = false;
 let cargando = false;
 let mapas = [];
-
-/* MENSAJES */
+let versionCarga = 0;
 
 function mostrarMensaje(texto, tipo = 'aviso') {
-
     mensajeGeneral.textContent = texto;
     mensajeGeneral.className = tipo;
-
 }
 
-/* SEGURIDAD */
+async function verificarPermiso() {
+
+    const { data: usuarioActual, error: errorUsuario } =
+        await supabase.auth.getUser();
+
+    if (errorUsuario || !usuarioActual.user) {
+        return null;
+    }
+
+    const { data: permiso, error: errorPermiso } =
+        await supabase.rpc('es_revisor_autorizado');
+
+    if (errorPermiso || permiso !== true) {
+        return null;
+    }
+
+    return usuarioActual.user;
+}
 
 async function verificarAcceso() {
 
     try {
 
-        const { data: usuarioActual, error } =
-            await supabase.auth.getUser();
+        const usuarioActual = await verificarPermiso();
 
-        if (error || !usuarioActual.user) {
-
-            window.location.replace(
-                'admin-login.html'
-            );
-
-            return;
-        }
-
-        const { data: permiso, error: errorPermiso } =
-            await supabase.rpc(
-                'es_revisor_autorizado'
-            );
-
-        if (errorPermiso || permiso !== true) {
-
+        if (!usuarioActual) {
             autorizado = false;
-
-            mostrarMensaje(
-                'No tienes permisos para acceder ' +
-                'al panel administrativo.',
-                'error'
-            );
-
+            window.location.replace('admin-login.html');
             return;
         }
 
         autorizado = true;
 
         usuario.textContent =
-            'Sesión administrativa: ' +
-            usuarioActual.user.email;
+            'Sesión administrativa: ' + usuarioActual.email;
 
         botonCerrar.classList.remove('oculto');
-
         contenido.classList.remove('oculto');
 
         await cargarReportes();
@@ -396,20 +377,182 @@ async function verificarAcceso() {
         );
 
     }
-
 }
-
-/* ELIMINAR MAPAS ANTERIORES */
 
 function limpiarMapas() {
-
     mapas.forEach(mapa => mapa.remove());
-
     mapas = [];
+}
+
+function crearTexto(contenedor, etiqueta, valor) {
+
+    const linea = document.createElement('div');
+    const titulo = document.createElement('strong');
+
+    titulo.textContent = etiqueta + ': ';
+
+    linea.appendChild(titulo);
+
+    linea.appendChild(
+        document.createTextNode(
+            valor === null ||
+            valor === undefined ||
+            valor === ''
+                ? 'No registrado'
+                : String(valor)
+        )
+    );
+
+    contenedor.appendChild(linea);
+}
+
+function abrirFotografia(url) {
+
+    imagenAmpliada.src = url;
+    visorImagen.classList.remove('oculto');
+    document.body.style.overflow = 'hidden';
+
+    cerrarVisor.focus();
+}
+
+function cerrarFotografia() {
+
+    visorImagen.classList.add('oculto');
+    imagenAmpliada.removeAttribute('src');
+    document.body.style.overflow = '';
 
 }
 
-/* CONSULTAR REPORTES */
+cerrarVisor.addEventListener('click', cerrarFotografia);
+
+visorImagen.addEventListener('click', evento => {
+    if (evento.target === visorImagen) {
+        cerrarFotografia();
+    }
+});
+
+document.addEventListener('keydown', evento => {
+    if (evento.key === 'Escape') {
+        cerrarFotografia();
+    }
+});
+
+/* FOTOGRAFÍA PRIVADA */
+
+async function cargarFotografia(idReporte, contenedor, version) {
+
+    const estado = document.createElement('p');
+    estado.className = 'aviso';
+    estado.textContent = 'Cargando fotografía...';
+
+    contenedor.appendChild(estado);
+
+    try {
+
+        const { data, error } = await supabase.rpc(
+            'consultar_fotografia_reporte',
+            { p_id_reporte: idReporte }
+        );
+
+        if (error) {
+            throw error;
+        }
+
+        if (version !== versionCarga) {
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            estado.textContent =
+                'Este reporte no tiene fotografía registrada.';
+            return;
+        }
+
+        const ruta = data[0].ruta_imagen;
+
+        if (!ruta) {
+            estado.textContent =
+                'La fotografía no tiene una ruta válida.';
+            return;
+        }
+
+        /*
+          Generamos un enlace temporal de 5 minutos.
+          El archivo continúa dentro del bucket privado.
+        */
+
+        const { data: enlace, error: errorEnlace } =
+            await supabase.storage
+                .from(BUCKET)
+                .createSignedUrl(ruta, 300);
+
+        if (errorEnlace || !enlace?.signedUrl) {
+            throw new Error(
+                errorEnlace?.message ||
+                'No se pudo generar el enlace temporal.'
+            );
+        }
+
+        if (version !== versionCarga) {
+            return;
+        }
+
+        const imagen = document.createElement('img');
+
+        imagen.className = 'imagen-reporte';
+        imagen.alt = 'Fotografía del reporte #' + idReporte;
+        imagen.loading = 'lazy';
+        imagen.src = enlace.signedUrl;
+        imagen.title = 'Haz clic para ampliar';
+
+        imagen.addEventListener('click', () => {
+            abrirFotografia(enlace.signedUrl);
+        });
+
+        imagen.addEventListener('load', () => {
+            if (version === versionCarga) {
+                estado.remove();
+            }
+        });
+
+        imagen.addEventListener('error', () => {
+            if (version === versionCarga) {
+                estado.textContent =
+                    'No fue posible mostrar la fotografía. ' +
+                    'Intenta actualizar el panel.';
+                imagen.remove();
+            }
+        });
+
+        const marco = document.createElement('div');
+        marco.className = 'contenedor-imagen';
+
+        marco.appendChild(imagen);
+        contenedor.appendChild(marco);
+
+        const ayuda = document.createElement('p');
+        ayuda.className = 'aviso';
+        ayuda.textContent =
+            'Haz clic sobre la fotografía para ampliarla.';
+
+        contenedor.appendChild(ayuda);
+
+    } catch (error) {
+
+        if (version !== versionCarga) {
+            return;
+        }
+
+        estado.className = 'error';
+
+        estado.textContent =
+            'No fue posible cargar la fotografía: ' +
+            error.message;
+
+    }
+}
+
+/* REPORTES PENDIENTES */
 
 async function cargarReportes() {
 
@@ -420,58 +563,57 @@ async function cargarReportes() {
     cargando = true;
     botonActualizar.disabled = true;
 
-    mostrarMensaje(
-        'Consultando reportes pendientes...'
-    );
+    mostrarMensaje('Consultando reportes pendientes...');
 
     try {
 
-        const { data, error } =
-            await supabase.rpc(
-                'consultar_reportes_pendientes'
+        const usuarioActual = await verificarPermiso();
+
+        if (!usuarioActual) {
+            autorizado = false;
+            contenido.classList.add('oculto');
+            mostrarMensaje(
+                'La sesión no tiene permisos administrativos.',
+                'error'
             );
+            return;
+        }
+
+        const { data, error } = await supabase.rpc(
+            'consultar_reportes_pendientes'
+        );
 
         if (error) {
             throw error;
         }
 
-        limpiarMapas();
+        versionCarga++;
+        const version = versionCarga;
 
+        cerrarFotografia();
+        limpiarMapas();
         listaReportes.replaceChildren();
 
         const reportes = data || [];
 
-        totalPendientes.textContent =
-            reportes.length;
+        totalPendientes.textContent = reportes.length;
 
         if (reportes.length === 0) {
 
-            const vacio =
-                document.createElement('p');
-
+            const vacio = document.createElement('p');
             vacio.className = 'correcto';
-
             vacio.textContent =
                 'No hay reportes pendientes de revisión.';
 
             listaReportes.appendChild(vacio);
 
-            mostrarMensaje(
-                'Consulta realizada correctamente.',
-                'correcto'
-            );
+        } else {
 
-            return;
+            reportes.forEach((reporte, indice) => {
+                crearTarjetaReporte(reporte, indice, version);
+            });
+
         }
-
-        reportes.forEach((reporte, indice) => {
-
-            crearTarjetaReporte(
-                reporte,
-                indice
-            );
-
-        });
 
         mostrarMensaje(
             'Se encontraron ' +
@@ -494,99 +636,44 @@ async function cargarReportes() {
         botonActualizar.disabled = false;
 
     }
-
 }
 
-/* CREAR ELEMENTOS SEGUROS */
+/* TARJETA DE REPORTE */
 
-function crearTexto(contenedor, etiqueta, valor) {
+function crearTarjetaReporte(reporte, indice, version) {
 
-    const linea =
-        document.createElement('div');
-
-    const titulo =
-        document.createElement('strong');
-
-    titulo.textContent = etiqueta + ': ';
-
-    linea.appendChild(titulo);
-
-    linea.appendChild(
-        document.createTextNode(
-            valor === null ||
-            valor === undefined ||
-            valor === ''
-                ? 'No registrado'
-                : String(valor)
-        )
-    );
-
-    contenedor.appendChild(linea);
-
-}
-
-/* MOSTRAR CADA REPORTE */
-
-function crearTarjetaReporte(reporte, indice) {
-
-    const tarjeta =
-        document.createElement('article');
-
+    const tarjeta = document.createElement('article');
     tarjeta.className = 'reporte';
 
-    const titulo =
-        document.createElement('h3');
-
-    titulo.textContent =
-        'Reporte #' + reporte.id_reporte;
-
+    const titulo = document.createElement('h3');
+    titulo.textContent = 'Reporte #' + reporte.id_reporte;
     tarjeta.appendChild(titulo);
 
-    const estado =
-        document.createElement('span');
-
+    const estado = document.createElement('span');
     estado.className = 'etiqueta';
-
-    estado.textContent =
-        reporte.estado_validacion;
-
+    estado.textContent = reporte.estado_validacion;
     tarjeta.appendChild(estado);
 
-    const detalle =
-        document.createElement('div');
-
+    const detalle = document.createElement('div');
     detalle.className = 'detalle';
-
     detalle.style.marginTop = '12px';
 
     crearTexto(
         detalle,
         'Fecha',
         reporte.fecha_reporte
-            ? new Date(
-                reporte.fecha_reporte
-              ).toLocaleString('es-CO')
+            ? new Date(reporte.fecha_reporte)
+                .toLocaleString('es-CO')
             : null
     );
 
-    crearTexto(
-        detalle,
-        'Dirección',
-        reporte.direccion
-    );
-
+    crearTexto(detalle, 'Dirección', reporte.direccion);
     crearTexto(
         detalle,
         'Gravedad',
-        reporte.gravedad
+        reporte.gravedad_reportada ?? reporte.gravedad
     );
-
-    crearTexto(
-        detalle,
-        'ID del hueco',
-        reporte.id_hueco
-    );
-
+    crearTexto(detalle, 'ID del hueco', reporte.id_hueco);
     crearTexto(
         detalle,
         'ID del ciudadano',
@@ -608,106 +695,27 @@ function crearTarjetaReporte(reporte, indice) {
         typeof L !== 'undefined'
     ) {
 
-        const contenedorMapa =
-            document.createElement('div');
+        const contenedorMapa = document.createElement('div');
 
-        contenedorMapa.className =
-            'mapa-reporte';
-
-        contenedorMapa.id =
-            'mapa-reporte-' + indice;
+        contenedorMapa.className = 'mapa-reporte';
+        contenedorMapa.id = 'mapa-reporte-' + indice;
 
         tarjeta.appendChild(contenedorMapa);
 
-    }
+        listaReportes.appendChild(tarjeta);
 
-    /* FOTOGRAFÍA */
-
-    const fotografia =
-        document.createElement('div');
-
-    fotografia.className = 'fotografia';
-
-    fotografia.textContent =
-        reporte.ruta_imagen
-            ? 'Fotografía asociada al reporte. ' +
-              'La visualización segura se habilitará próximamente.'
-            : 'Este reporte no tiene fotografía asociada.';
-
-    tarjeta.appendChild(fotografia);
-
-    /* BOTONES */
-
-    const acciones =
-        document.createElement('div');
-
-    acciones.className = 'acciones';
-
-    const aprobar =
-        document.createElement('button');
-
-    aprobar.className = 'aprobar';
-
-    aprobar.type = 'button';
-
-    aprobar.textContent = 'Aprobar reporte';
-
-    const rechazar =
-        document.createElement('button');
-
-    rechazar.className = 'rechazar';
-
-    rechazar.type = 'button';
-
-    rechazar.textContent = 'Rechazar reporte';
-
-    aprobar.addEventListener('click', () => {
-
-        validarReporte(
-            reporte.id_reporte,
-            'APROBADO'
-        );
-
-    });
-
-    rechazar.addEventListener('click', () => {
-
-        validarReporte(
-            reporte.id_reporte,
-            'RECHAZADO'
-        );
-
-    });
-
-    acciones.appendChild(aprobar);
-    acciones.appendChild(rechazar);
-
-    tarjeta.appendChild(acciones);
-
-    listaReportes.appendChild(tarjeta);
-
-    /* INICIALIZAR MAPA */
-
-    if (
-        tarjeta.querySelector('.mapa-reporte') &&
-        typeof L !== 'undefined'
-    ) {
-
-        const mapa = L.map(
-            'mapa-reporte-' + indice
-        ).setView([lat, lng], 17);
+        const mapa = L.map(contenedorMapa)
+            .setView([lat, lng], 17);
 
         L.tileLayer(
             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             {
-                maxZoom: 19,
-                attribution:
-                    '&copy; OpenStreetMap contributors'
+                maxZoom:19,
+                attribution:'&copy; OpenStreetMap contributors'
             }
         ).addTo(mapa);
 
-        L.marker([lat, lng])
-            .addTo(mapa);
+        L.marker([lat, lng]).addTo(mapa);
 
         mapas.push(mapa);
 
@@ -715,8 +723,56 @@ function crearTarjetaReporte(reporte, indice) {
             mapa.invalidateSize();
         });
 
+    } else {
+
+        listaReportes.appendChild(tarjeta);
+
     }
 
+    /* FOTOGRAFÍA */
+
+    const seccionFoto = document.createElement('section');
+    seccionFoto.className = 'seccion-foto';
+
+    const tituloFoto = document.createElement('h4');
+    tituloFoto.textContent = 'Fotografía del hueco';
+
+    seccionFoto.appendChild(tituloFoto);
+    tarjeta.appendChild(seccionFoto);
+
+    cargarFotografia(
+        reporte.id_reporte,
+        seccionFoto,
+        version
+    );
+
+    /* ACCIONES */
+
+    const acciones = document.createElement('div');
+    acciones.className = 'acciones';
+
+    const aprobar = document.createElement('button');
+    aprobar.className = 'aprobar';
+    aprobar.type = 'button';
+    aprobar.textContent = 'Aprobar reporte';
+
+    const rechazar = document.createElement('button');
+    rechazar.className = 'rechazar';
+    rechazar.type = 'button';
+    rechazar.textContent = 'Rechazar reporte';
+
+    aprobar.addEventListener('click', () => {
+        validarReporte(reporte.id_reporte, 'APROBADO');
+    });
+
+    rechazar.addEventListener('click', () => {
+        validarReporte(reporte.id_reporte, 'RECHAZADO');
+    });
+
+    acciones.appendChild(aprobar);
+    acciones.appendChild(rechazar);
+
+    tarjeta.appendChild(acciones);
 }
 
 /* APROBAR O RECHAZAR */
@@ -727,10 +783,9 @@ async function validarReporte(idReporte, nuevoEstado) {
         return;
     }
 
-    const accion =
-        nuevoEstado === 'APROBADO'
-            ? 'aprobar'
-            : 'rechazar';
+    const accion = nuevoEstado === 'APROBADO'
+        ? 'aprobar'
+        : 'rechazar';
 
     const confirmado = window.confirm(
         '¿Estás seguro de ' +
@@ -747,27 +802,31 @@ async function validarReporte(idReporte, nuevoEstado) {
     cargando = true;
     botonActualizar.disabled = true;
 
-    const botones =
-        listaReportes.querySelectorAll('button');
+    const botones = listaReportes.querySelectorAll('button');
 
     botones.forEach(boton => {
         boton.disabled = true;
     });
 
-    mostrarMensaje(
-        'Actualizando estado del reporte...'
-    );
+    mostrarMensaje('Actualizando estado del reporte...');
 
     try {
 
-        const { data, error } =
-            await supabase.rpc(
-                'validar_reporte_hueco',
-                {
-                    p_id_reporte: idReporte,
-                    p_estado: nuevoEstado
-                }
+        const usuarioActual = await verificarPermiso();
+
+        if (!usuarioActual) {
+            throw new Error(
+                'La sesión no tiene permisos administrativos.'
             );
+        }
+
+        const { data, error } = await supabase.rpc(
+            'validar_reporte_hueco',
+            {
+                p_id_reporte: idReporte,
+                p_estado: nuevoEstado
+            }
+        );
 
         if (error) {
             throw error;
@@ -780,11 +839,8 @@ async function validarReporte(idReporte, nuevoEstado) {
         }
 
         mostrarMensaje(
-            'Reporte #' +
-            idReporte +
-            ' actualizado a ' +
-            nuevoEstado +
-            '.',
+            'Reporte #' + idReporte +
+            ' actualizado a ' + nuevoEstado + '.',
             'correcto'
         );
 
@@ -804,13 +860,10 @@ async function validarReporte(idReporte, nuevoEstado) {
         });
 
         return;
-
     }
 
     cargando = false;
-
     await cargarReportes();
-
 }
 
 /* ACTUALIZAR */
@@ -826,8 +879,7 @@ botonCerrar.addEventListener('click', async () => {
 
     botonCerrar.disabled = true;
 
-    const { error } =
-        await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
 
@@ -838,14 +890,10 @@ botonCerrar.addEventListener('click', async () => {
         );
 
         botonCerrar.disabled = false;
-
         return;
     }
 
-    window.location.replace(
-        'admin-login.html'
-    );
-
+    window.location.replace('admin-login.html');
 });
 
 /* INICIAR */
@@ -853,6 +901,5 @@ botonCerrar.addEventListener('click', async () => {
 verificarAcceso();
 
 </script>
-
 </body>
 </html>
