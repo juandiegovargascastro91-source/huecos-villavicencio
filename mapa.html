@@ -87,6 +87,36 @@ button:disabled{
     color:#115b99;
 }
 
+/* Leyenda de estados */
+
+.leyenda{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px 22px;
+    margin:0 0 18px;
+    align-items:center;
+}
+
+.leyenda-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+}
+
+.punto-leyenda{
+    width:15px;
+    height:15px;
+    border-radius:50%;
+    flex-shrink:0;
+    border:2px solid white;
+    box-shadow:0 0 0 1px #cbd5e1;
+}
+
+.rojo{background:#d93636}
+.amarillo{background:#e9a600}
+.verde{background:#198754}
+
 #mapa{
     width:100%;
     height:560px;
@@ -115,7 +145,53 @@ button:disabled{
 
 .detalle-popup{
     line-height:1.7;
-    min-width:180px;
+    min-width:190px;
+}
+
+.etiqueta-estado{
+    display:inline-block;
+    margin-top:8px;
+    padding:4px 9px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.estado-reportado{
+    background:#fde8e8;
+    color:#a82020;
+}
+
+.estado-pendiente{
+    background:#fff3cd;
+    color:#805900;
+}
+
+.estado-reparado{
+    background:#dff3e7;
+    color:#146c43;
+}
+
+.estado-desconocido{
+    background:#e8edf3;
+    color:#52667b;
+}
+
+.verificado{
+    margin-top:8px;
+    font-size:12px;
+    font-weight:bold;
+    color:#12623c;
+}
+
+/* Marcadores de colores */
+
+.marcador-estado{
+    width:24px;
+    height:24px;
+    border:3px solid white;
+    border-radius:50%;
+    box-shadow:0 2px 7px #00000055;
 }
 
 @media(max-width:600px){
@@ -124,6 +200,8 @@ button:disabled{
     header h1{font-size:21px}
     #mapa{height:480px}
     .barra{align-items:flex-start}
+    .leyenda{gap:10px}
+    .leyenda-item{width:100%}
 }
 </style>
 </head>
@@ -148,6 +226,27 @@ button:disabled{
     <div class="resumen">
         <strong id="totalHuecos">0</strong>
         <div>Huecos publicados</div>
+    </div>
+
+    <!-- Leyenda de estados -->
+
+    <div class="leyenda">
+
+        <div class="leyenda-item">
+            <span class="punto-leyenda rojo"></span>
+            <span>Hueco reportado</span>
+        </div>
+
+        <div class="leyenda-item">
+            <span class="punto-leyenda amarillo"></span>
+            <span>Reparación pendiente de verificación</span>
+        </div>
+
+        <div class="leyenda-item">
+            <span class="punto-leyenda verde"></span>
+            <span>Hueco reparado</span>
+        </div>
+
     </div>
 
     <div id="mapa"
@@ -184,6 +283,40 @@ const actualizar=document.getElementById('actualizar');
 let mapa;
 let marcadores;
 let cargando=false;
+
+/* Configuración de estados */
+
+const estados={
+
+    REPORTADO:{
+        texto:'Hueco reportado',
+        color:'#d93636',
+        clase:'estado-reportado'
+    },
+
+    REPARACION_REPORTADA:{
+        texto:'Reparación pendiente de verificación',
+        color:'#e9a600',
+        clase:'estado-pendiente'
+    },
+
+    REPARADO:{
+        texto:'Hueco reparado',
+        color:'#198754',
+        clase:'estado-reparado'
+    }
+
+};
+
+function obtenerEstado(valor){
+
+    return estados[valor]||{
+        texto:'Estado no disponible',
+        color:'#52667b',
+        clase:'estado-desconocido'
+    };
+
+}
 
 function mostrarEstado(texto,tipo=''){
     estado.textContent=texto;
@@ -226,6 +359,28 @@ function inicializarMapa(){
     return true;
 }
 
+/* Crear icono según el estado */
+
+function crearIcono(estadoHueco){
+
+    const configuracion=obtenerEstado(estadoHueco);
+
+    return L.divIcon({
+        className:'',
+        html:
+            '<div class="marcador-estado" '+
+            'style="background-color:'+
+            configuracion.color+
+            '"></div>',
+        iconSize:[24,24],
+        iconAnchor:[12,12],
+        popupAnchor:[0,-14]
+    });
+
+}
+
+/* Crear información del hueco */
+
 function crearPopup(hueco){
 
     const contenedor=document.createElement('div');
@@ -245,10 +400,18 @@ function crearPopup(hueco){
         'Gravedad: '+(hueco.gravedad||'No registrada');
     contenedor.appendChild(gravedad);
 
-    const estadoHueco=document.createElement('div');
-    estadoHueco.textContent=
-        'Estado: '+(hueco.estado||'No registrado');
-    contenedor.appendChild(estadoHueco);
+    const configuracion=obtenerEstado(hueco.estado);
+
+    const etiqueta=document.createElement('div');
+    etiqueta.className=
+        'etiqueta-estado '+configuracion.clase;
+    etiqueta.textContent=configuracion.texto;
+    contenedor.appendChild(etiqueta);
+
+    const verificado=document.createElement('div');
+    verificado.className='verificado';
+    verificado.textContent='✓ Reporte verificado';
+    contenedor.appendChild(verificado);
 
     return contenedor;
 }
@@ -302,7 +465,12 @@ async function cargarHuecos(){
                 continue;
             }
 
-            const marcador=L.marker([lat,lng]);
+            const marcador=L.marker(
+                [lat,lng],
+                {
+                    icon:crearIcono(hueco.estado)
+                }
+            );
 
             marcador.bindPopup(
                 crearPopup(hueco)
