@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso administrativo | HUECOS VILLAVICENCIO</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f3f6fa;
+    color:#183153;
+}
+header{
+    background:#12345a;
+    color:white;
+    text-align:center;
+    padding:30px 15px;
+}
+header h1{font-size:25px;margin:0 0 10px}
+header p{margin:0}
+main{
+    max-width:460px;
+    margin:55px auto;
+    padding:15px;
+}
+.panel{
+    background:white;
+    padding:30px;
+    border-radius:14px;
+    box-shadow:0 4px 18px #00000012;
+}
+h2{text-align:center;margin-top:0}
+.descripcion{
+    color:#52667b;
+    text-align:center;
+    line-height:1.5;
+}
+label{
+    display:block;
+    margin-top:18px;
+    margin-bottom:7px;
+    font-weight:bold;
+}
+input{
+    width:100%;
+    padding:13px;
+    border:1px solid #c9d5e3;
+    border-radius:8px;
+    font-size:15px;
+}
+button{
+    width:100%;
+    margin-top:25px;
+    padding:14px;
+    background:#115b99;
+    color:white;
+    border:0;
+    border-radius:8px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+button:disabled{opacity:.6;cursor:wait}
+#mensaje{
+    margin-top:17px;
+    text-align:center;
+    line-height:1.5;
+}
+.error{color:#a12323}
+.correcto{color:#12623c}
+.volver{
+    display:block;
+    margin-top:25px;
+    text-align:center;
+    color:#115b99;
+    text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>HUECOS VILLAVICENCIO</h1>
+    <p>Portal de administración</p>
+</header>
+
+<main>
+<div class="panel">
+
+    <h2>Acceso administrativo</h2>
+
+    <p class="descripcion">
+        Ingreso exclusivo para revisores y administradores autorizados.
+    </p>
+
+    <form id="formulario">
+
+        <label for="correo">Correo electrónico</label>
+        <input
+            id="correo"
+            type="email"
+            autocomplete="username"
+            required
+        >
+
+        <label for="clave">Contraseña</label>
+        <input
+            id="clave"
+            type="password"
+            autocomplete="current-password"
+            required
+        >
+
+        <button id="ingresar" type="submit">
+            Ingresar al panel
+        </button>
+
+    </form>
+
+    <p id="mensaje" role="status" aria-live="polite"></p>
+
+    <a class="volver" href="index.html">
+        ← Volver al portal ciudadano
+    </a>
+
+</div>
+</main>
+
+<script type="module">
+
+import { createClient } from
+'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+    'https://svwsaunrxskdifvsillz.supabase.co',
+    'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
+);
+
+const formulario = document.getElementById('formulario');
+const boton = document.getElementById('ingresar');
+const mensaje = document.getElementById('mensaje');
+
+formulario.addEventListener('submit', async (evento) => {
+
+    evento.preventDefault();
+
+    boton.disabled = true;
+    mensaje.className = '';
+    mensaje.textContent = 'Verificando credenciales...';
+
+    try {
+
+        const correo =
+            document.getElementById('correo').value.trim();
+
+        const clave =
+            document.getElementById('clave').value;
+
+        const { error: errorIngreso } =
+            await supabase.auth.signInWithPassword({
+                email: correo,
+                password: clave
+            });
+
+        if (errorIngreso) {
+            throw new Error('Correo o contraseña incorrectos.');
+        }
+
+        const { data, error: errorPermiso } =
+            await supabase.rpc('es_revisor_autorizado');
+
+        if (errorPermiso || data !== true) {
+
+            await supabase.auth.signOut();
+
+            throw new Error(
+                'Esta cuenta no tiene permisos administrativos.'
+            );
+        }
+
+        mensaje.className = 'correcto';
+        mensaje.textContent = 'Acceso autorizado. Redirigiendo...';
+
+        window.location.replace('administracion.html');
+
+    } catch (error) {
+
+        mensaje.className = 'error';
+        mensaje.textContent = error.message;
+
+        boton.disabled = false;
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
