@@ -229,6 +229,15 @@ button:disabled{
 .herramientas input{flex:1;min-width:180px;padding:12px;border:1px solid #bdcbd9;border-radius:8px;font-size:14px}
 .paginacion{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}
 @media(max-width:600px){.contadores{grid-template-columns:repeat(2,minmax(0,1fr))}.modulo{padding:12px 7px;font-size:12px}.modulo strong{font-size:22px}}
+.evidencia-editor{margin-top:14px;padding:14px;border:1px solid #d6e1ec;background:#f7fafc;border-radius:10px}
+.evidencia-editor label{display:block;font-weight:bold;margin-bottom:9px}
+.evidencia-editor input[type=file]{display:block;width:100%;max-width:460px;font-size:14px}
+.evidencia-editor img{max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;margin-top:10px}
+.evidencia-editor .aviso{margin:8px 0;font-size:13px}
+.evidencias-historial{margin-top:14px;padding:12px;background:#edf4fa;border-radius:9px}
+.evidencias-historial h4{margin:0 0 8px}
+.evidencias-historial .etapa{margin-top:12px}
+.evidencias-historial img{max-width:100%;max-height:260px;cursor:zoom-in;border-radius:8px;display:block;margin-top:6px}
 .oculto{display:none!important}
 
 @media(max-width:600px){
@@ -1131,10 +1140,53 @@ async function cargarHuecos() {
             selector.addEventListener('change', () => {
                 guardar.disabled = selector.value === hueco.estado;
             });
-            guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco,selector.value));
+            const editor = document.createElement('div');
+            editor.className = 'evidencia-editor oculto';
+            const etiqueta = document.createElement('label');
+            etiqueta.textContent = 'Fotografía de seguimiento (opcional)';
+            const archivo = document.createElement('input');
+            archivo.type = 'file';
+            archivo.accept = 'image/jpeg,image/png,image/webp';
+            archivo.setAttribute('aria-label', 'Tomar o seleccionar fotografía para hueco #' + hueco.id_hueco);
+            const ayuda = document.createElement('p');
+            ayuda.className = 'aviso';
+            ayuda.textContent = 'Puedes tomar una foto con la cámara o elegir una de tu galería. Se comprimirá automáticamente.';
+            const previa = document.createElement('img');
+            previa.className = 'oculto';
+            previa.alt = 'Vista previa de la fotografía opcional';
+            const quitar = document.createElement('button');
+            quitar.type = 'button';
+            quitar.className = 'secundario oculto';
+            quitar.textContent = 'Quitar fotografía';
+            let urlPrevia = null;
+            archivo.addEventListener('change', () => {
+                if (urlPrevia) URL.revokeObjectURL(urlPrevia);
+                urlPrevia = archivo.files?.[0] ? URL.createObjectURL(archivo.files[0]) : null;
+                previa.classList.toggle('oculto', !urlPrevia);
+                quitar.classList.toggle('oculto', !urlPrevia);
+                if (urlPrevia) previa.src = urlPrevia;
+                else previa.removeAttribute('src');
+            });
+            quitar.addEventListener('click', () => {
+                archivo.value = '';
+                archivo.dispatchEvent(new Event('change'));
+            });
+            editor.append(etiqueta,archivo,ayuda,previa,quitar);
+            const actualizarEditor = () => {
+                guardar.disabled = selector.value === hueco.estado;
+                editor.classList.toggle('oculto', selector.value === 'REPORTADO' || selector.value === hueco.estado);
+            };
+            selector.addEventListener('change', actualizarEditor);
+            guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco,selector.value,archivo.files?.[0] || null));
             acciones.append(selector,guardar);
-            tarjeta.appendChild(acciones);
+            tarjeta.append(acciones,editor);
+            const historial = document.createElement('div');
+            historial.className = 'evidencias-historial';
+            historial.textContent = 'Consultando evidencias anteriores...';
+            tarjeta.appendChild(historial);
             listaHuecos.appendChild(tarjeta);
+            cargarEvidenciasHueco(hueco.id_hueco,historial);
+            actualizarEditor();
         }
         const paginas = Math.max(1,Math.ceil(totalFiltrados/TAMANO_PAGINA));
         infoPagina.textContent = 'Página '+(paginaHuecos+1)+' de '+paginas;
@@ -1149,35 +1201,127 @@ async function cargarHuecos() {
     }
 }
 
-async function cambiarEstadoHueco(idHueco, nuevoEstado) {
+async function comprimirFotografia(archivo) {
+    if (!archivo.type.startsWith('image/')) throw new Error('Selecciona un archivo de imagen.');
+    const url = URL.createObjectURL(archivo);
+    try {
+        const imagen = new Image();
+        imagen.src = url;
+        await imagen.decode();
+        const limite = 1500;
+        const escala = Math.min(1, limite / Math.max(imagen.naturalWidth, imagen.naturalHeight));
+        const lienzo = document.createElement('canvas');
+        lienzo.width = Math.max(1, Math.round(imagen.naturalWidth * escala));
+        lienzo.height = Math.max(1, Math.round(imagen.naturalHeight * escala));
+        lienzo.getContext('2d').drawImage(imagen,0,0,lienzo.width,lienzo.height);
+        let calidad = 0.82;
+        let blob;
+        do {
+            blob = await new Promise(resolve => lienzo.toBlob(resolve,'image/jpeg',calidad));
+            if (!blob) throw new Error('No fue posible comprimir la fotografía.');
+            calidad -= 0.12;
+        } while (blob.size > 2 * 1024 * 1024 && calidad >= 0.25);
+        if (blob.size > 2 * 1024 * 1024) throw new Error('La fotografía supera el límite de 2 MB.');
+        return blob;
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+async function cargarEvidenciasHueco(idHueco,contenedor) {
+    const {data,error} = await supabase.from('evidencias_estado_hueco')
+        .select('estado_hueco,ruta_imagen,fecha_registro')
+        .eq('id_hueco',idHueco).order('fecha_registro',{ascending:true});
+    if (!contenedor.isConnected) return;
+    contenedor.replaceChildren();
+    if (error) {
+        contenedor.textContent = 'No se pudo consultar el historial de evidencias: ' + error.message;
+        return;
+    }
+    const titulo = document.createElement('h4');
+    titulo.textContent = 'Historial de seguimiento';
+    contenedor.appendChild(titulo);
+    if (!data?.length) {
+        const vacio = document.createElement('p');
+        vacio.className = 'aviso';
+        vacio.textContent = 'Aún no hay cambios de etapa registrados con evidencia administrativa.';
+        contenedor.appendChild(vacio);
+        return;
+    }
+    for (const evidencia of data) {
+        const etapa = document.createElement('div');
+        etapa.className = 'etapa';
+        const encabezado = document.createElement('strong');
+        encabezado.textContent = (nombresEstados[evidencia.estado_hueco] || evidencia.estado_hueco) +
+            ' · ' + new Date(evidencia.fecha_registro).toLocaleString('es-CO');
+        etapa.appendChild(encabezado);
+        if (evidencia.ruta_imagen) {
+            const {data:enlace,error:errorEnlace} = await supabase.storage.from(BUCKET)
+                .createSignedUrl(evidencia.ruta_imagen,300);
+            if (!contenedor.isConnected) return;
+            if (errorEnlace || !enlace?.signedUrl) {
+                const aviso = document.createElement('p');
+                aviso.className = 'error';
+                aviso.textContent = 'No se pudo abrir la fotografía.';
+                etapa.appendChild(aviso);
+            } else {
+                const foto = document.createElement('img');
+                foto.src = enlace.signedUrl;
+                foto.alt = 'Fotografía de la etapa ' + nombresEstados[evidencia.estado_hueco];
+                foto.loading = 'lazy';
+                foto.title = 'Clic para ampliar';
+                foto.addEventListener('click',() => abrirFotografia(enlace.signedUrl));
+                etapa.appendChild(foto);
+            }
+        } else {
+            const aviso = document.createElement('p');
+            aviso.className = 'aviso';
+            aviso.textContent = 'Cambio de estado registrado sin fotografía.';
+            etapa.appendChild(aviso);
+        }
+        contenedor.appendChild(etapa);
+    }
+}
+
+async function cambiarEstadoHueco(idHueco, nuevoEstado, archivo = null) {
     if (!autorizado || !esAdministrador || cargandoHuecos || !nombresEstados[nuevoEstado]) return;
-    if (!window.confirm('¿Cambiar el hueco #' + idHueco + ' a "' + nombresEstados[nuevoEstado] + '"?')) return;
+    if (!window.confirm('¿Cambiar el hueco #' + idHueco + ' a "' + nombresEstados[nuevoEstado] + '"?' +
+        (archivo ? ' Se adjuntará la fotografía seleccionada.' : ' Sin fotografía.'))) return;
 
     cargandoHuecos = true;
     botonActualizarHuecos.disabled = true;
-    listaHuecos.querySelectorAll('button,select').forEach(control => control.disabled = true);
+    listaHuecos.querySelectorAll('button,select,input').forEach(control => control.disabled = true);
     mensajeEstadoHuecos('Guardando el nuevo estado...');
+    let rutaSubida = null;
     try {
         const usuarioActual = await verificarPermiso();
         if (!usuarioActual) throw new Error('La sesión administrativa no está autorizada.');
-        const {data, error} = await supabase.rpc('cambiar_estado_hueco', {
+        const {data:esAdmin,error:errorAdmin} = await supabase.rpc('es_administrador_activo');
+        if (errorAdmin || esAdmin !== true) throw new Error('Se requiere un administrador activo.');
+        if (archivo && nuevoEstado !== 'REPORTADO') {
+            mensajeEstadoHuecos('Comprimiendo y cargando fotografía...');
+            const comprimida = await comprimirFotografia(archivo);
+            const identificador = crypto.randomUUID();
+            const ruta = `estados/${idHueco}/${nuevoEstado}/${identificador}.jpg`;
+            const {error:errorSubida} = await supabase.storage.from(BUCKET)
+                .upload(ruta,comprimida,{contentType:'image/jpeg',upsert:false});
+            if (errorSubida) throw errorSubida;
+            rutaSubida = ruta;
+        }
+        const {data,error} = await supabase.rpc('actualizar_estado_hueco_evidencia', {
             p_id_hueco: idHueco,
-            p_nuevo_estado: nuevoEstado
+            p_nuevo_estado: nuevoEstado,
+            p_ruta_imagen: rutaSubida
         });
         if (error) throw error;
         if (data !== true) throw new Error('No se confirmó el cambio de estado.');
         mensajeEstadoHuecos('Estado del hueco #' + idHueco + ' actualizado.', 'correcto');
     } catch (error) {
-        mensajeEstadoHuecos('No fue posible cambiar el estado: ' + error.message, 'error');
+        mensajeEstadoHuecos('No fue posible cambiar el estado: ' + error.message +
+            (rutaSubida ? ' La fotografía pudo quedar cargada sin vincularse; informa al administrador del sistema.' : ''),'error');
         cargandoHuecos = false;
         botonActualizarHuecos.disabled = false;
-        listaHuecos.querySelectorAll('select').forEach(control => control.disabled = false);
-        listaHuecos.querySelectorAll('.estado-hueco').forEach(tarjeta => {
-            const selector = tarjeta.querySelector('select');
-            const boton = tarjeta.querySelector('button');
-            const textoActual = tarjeta.querySelector('.estado-actual')?.textContent || '';
-            boton.disabled = textoActual === 'Estado actual: ' + nombresEstados[selector.value];
-        });
+        await cargarHuecos();
         return;
     }
     cargandoHuecos = false;
