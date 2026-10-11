@@ -73,6 +73,15 @@ button:disabled{
 }
 
 .secundario{background:#52667b}
+.estado-hueco{border:1px solid #d6e1ec;border-radius:10px;padding:16px;margin-top:12px}
+.estado-hueco h3{margin:0 0 10px}
+.estado-hueco select{width:100%;max-width:360px;padding:11px;border:1px solid #bdcbd9;border-radius:8px;background:white;color:#183153;font-size:14px}
+.estado-actual{font-weight:bold}
+.estado-actual.reportado{color:#b33434}
+.estado-actual.reparacion{color:#9a6700}
+.estado-actual.reparado{color:#167346}
+.estado-hueco .acciones{align-items:center}
+.estado-hueco .detalle{margin-bottom:10px}
 .aprobar{background:#167346}
 .rechazar{background:#b33434}
 
@@ -274,6 +283,16 @@ button:disabled{
 
     </section>
 
+    <section id="panelEstados" class="panel oculto">
+        <div class="barra">
+            <h2>Administración de huecos</h2>
+            <button id="actualizarHuecos" type="button">Actualizar huecos</button>
+        </div>
+        <p class="aviso">Solo los administradores pueden modificar el estado de los huecos publicados.</p>
+        <p id="mensajeHuecos" class="aviso" role="status" aria-live="polite"></p>
+        <div id="listaHuecos"></div>
+    </section>
+
 </div>
 
 </main>
@@ -317,6 +336,12 @@ const botonActualizar = document.getElementById('actualizar');
 const visorImagen = document.getElementById('visorImagen');
 const imagenAmpliada = document.getElementById('imagenAmpliada');
 const cerrarVisor = document.getElementById('cerrarVisor');
+const panelEstados = document.getElementById('panelEstados');
+const listaHuecos = document.getElementById('listaHuecos');
+const mensajeHuecos = document.getElementById('mensajeHuecos');
+const botonActualizarHuecos = document.getElementById('actualizarHuecos');
+let esAdministrador = false;
+let cargandoHuecos = false;
 
 let autorizado = false;
 let cargando = false;
@@ -367,7 +392,19 @@ async function verificarAcceso() {
         botonCerrar.classList.remove('oculto');
         contenido.classList.remove('oculto');
 
+        // El acceso a la revisión de reportes también lo tienen los revisores.
+        // La sección de estados solo se muestra a administradores activos.
+        const {data: perfil, error: errorPerfil} = await supabase
+            .from('revisores')
+            .select('rol,estado')
+            .eq('id_autenticacion', usuarioActual.id)
+            .maybeSingle();
+
+        esAdministrador = !errorPerfil && perfil?.rol === 'ADMINISTRADOR' && perfil?.estado === true;
+        if (esAdministrador) panelEstados.classList.remove('oculto');
+
         await cargarReportes();
+        if (esAdministrador) await cargarHuecos();
 
     } catch (error) {
 
@@ -865,6 +902,137 @@ async function validarReporte(idReporte, nuevoEstado) {
     cargando = false;
     await cargarReportes();
 }
+
+/* ADMINISTRACIÓN DE ESTADOS DE HUECOS */
+
+const nombresEstados = {
+    REPORTADO: 'Hueco reportado',
+    REPARACION_REPORTADA: 'Hueco en reparación',
+    REPARADO: 'Hueco reparado'
+};
+
+function mensajeEstadoHuecos(texto, tipo='aviso') {
+    mensajeHuecos.textContent = texto;
+    mensajeHuecos.className = tipo;
+}
+
+async function cargarHuecos() {
+    if (!autorizado || !esAdministrador || cargandoHuecos) return;
+    cargandoHuecos = true;
+    botonActualizarHuecos.disabled = true;
+    mensajeEstadoHuecos('Consultando huecos publicados...');
+
+    try {
+        // La política RLS pública solo devuelve huecos con reportes aprobados.
+        const {data, error} = await supabase
+            .from('huecos')
+            .select('id_hueco,direccion,gravedad,estado')
+            .order('id_hueco', {ascending:false})
+            .limit(1000);
+        if (error) throw error;
+
+        listaHuecos.replaceChildren();
+        const huecos = data || [];
+
+        if (!huecos.length) {
+            const vacio = document.createElement('p');
+            vacio.className = 'aviso';
+            vacio.textContent = 'No hay huecos publicados para administrar.';
+            listaHuecos.appendChild(vacio);
+        }
+
+        for (const hueco of huecos) {
+            const tarjeta = document.createElement('article');
+            tarjeta.className = 'estado-hueco';
+
+            const titulo = document.createElement('h3');
+            titulo.textContent = 'Hueco #' + hueco.id_hueco;
+            tarjeta.appendChild(titulo);
+
+            const detalle = document.createElement('div');
+            detalle.className = 'detalle';
+            crearTexto(detalle, 'Dirección', hueco.direccion);
+            crearTexto(detalle, 'Gravedad', hueco.gravedad);
+            tarjeta.appendChild(detalle);
+
+            const actual = document.createElement('div');
+            actual.className = 'estado-actual ' + (
+                hueco.estado === 'REPORTADO' ? 'reportado' :
+                hueco.estado === 'REPARACION_REPORTADA' ? 'reparacion' :
+                hueco.estado === 'REPARADO' ? 'reparado' : ''
+            );
+            actual.textContent = 'Estado actual: ' + (nombresEstados[hueco.estado] || hueco.estado || 'Desconocido');
+            tarjeta.appendChild(actual);
+
+            const acciones = document.createElement('div');
+            acciones.className = 'acciones';
+            const selector = document.createElement('select');
+            selector.setAttribute('aria-label', 'Nuevo estado del hueco #' + hueco.id_hueco);
+            for (const [valor, nombre] of Object.entries(nombresEstados)) {
+                const opcion = document.createElement('option');
+                opcion.value = valor;
+                opcion.textContent = nombre;
+                selector.appendChild(opcion);
+            }
+            selector.value = nombresEstados[hueco.estado] ? hueco.estado : 'REPORTADO';
+
+            const guardar = document.createElement('button');
+            guardar.type = 'button';
+            guardar.textContent = 'Guardar estado';
+            guardar.disabled = selector.value === hueco.estado;
+            selector.addEventListener('change', () => {
+                guardar.disabled = selector.value === hueco.estado;
+            });
+            guardar.addEventListener('click', () => cambiarEstadoHueco(hueco.id_hueco, selector.value));
+            acciones.append(selector, guardar);
+            tarjeta.appendChild(acciones);
+            listaHuecos.appendChild(tarjeta);
+        }
+        mensajeEstadoHuecos('Se encontraron ' + huecos.length + ' hueco(s) publicados.', 'correcto');
+    } catch (error) {
+        mensajeEstadoHuecos('No fue posible cargar los huecos: ' + error.message, 'error');
+    } finally {
+        cargandoHuecos = false;
+        botonActualizarHuecos.disabled = false;
+    }
+}
+
+async function cambiarEstadoHueco(idHueco, nuevoEstado) {
+    if (!autorizado || !esAdministrador || cargandoHuecos || !nombresEstados[nuevoEstado]) return;
+    if (!window.confirm('¿Cambiar el hueco #' + idHueco + ' a "' + nombresEstados[nuevoEstado] + '"?')) return;
+
+    cargandoHuecos = true;
+    botonActualizarHuecos.disabled = true;
+    listaHuecos.querySelectorAll('button,select').forEach(control => control.disabled = true);
+    mensajeEstadoHuecos('Guardando el nuevo estado...');
+    try {
+        const usuarioActual = await verificarPermiso();
+        if (!usuarioActual) throw new Error('La sesión administrativa no está autorizada.');
+        const {data, error} = await supabase.rpc('cambiar_estado_hueco', {
+            p_id_hueco: idHueco,
+            p_nuevo_estado: nuevoEstado
+        });
+        if (error) throw error;
+        if (data !== true) throw new Error('No se confirmó el cambio de estado.');
+        mensajeEstadoHuecos('Estado del hueco #' + idHueco + ' actualizado.', 'correcto');
+    } catch (error) {
+        mensajeEstadoHuecos('No fue posible cambiar el estado: ' + error.message, 'error');
+        cargandoHuecos = false;
+        botonActualizarHuecos.disabled = false;
+        listaHuecos.querySelectorAll('select').forEach(control => control.disabled = false);
+        listaHuecos.querySelectorAll('.estado-hueco').forEach(tarjeta => {
+            const selector = tarjeta.querySelector('select');
+            const boton = tarjeta.querySelector('button');
+            const textoActual = tarjeta.querySelector('.estado-actual')?.textContent || '';
+            boton.disabled = textoActual === 'Estado actual: ' + nombresEstados[selector.value];
+        });
+        return;
+    }
+    cargandoHuecos = false;
+    await cargarHuecos();
+}
+
+botonActualizarHuecos.addEventListener('click', cargarHuecos);
 
 /* ACTUALIZAR */
 
