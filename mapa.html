@@ -184,6 +184,22 @@ button:disabled{
     color:#12623c;
 }
 
+/* Etiquetas de gravedad */
+
+.etiqueta-gravedad{
+    display:inline-block;
+    padding:4px 9px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:bold;
+    margin-top:5px;
+}
+
+.gravedad-alta{background:#fde8e8;color:#a82020}
+.gravedad-media{background:#ffedd5;color:#9a3412}
+.gravedad-baja{background:#fff3cd;color:#805900}
+.gravedad-desconocida{background:#e8edf3;color:#52667b}
+
 /* Marcadores de colores */
 
 .marcador-estado{
@@ -396,8 +412,24 @@ function crearPopup(hueco){
     contenedor.appendChild(direccion);
 
     const gravedad=document.createElement('div');
-    gravedad.textContent=
-        'Gravedad: '+(hueco.gravedad||'No registrada');
+    const textoGravedad=document.createElement('span');
+    textoGravedad.textContent='Gravedad: ';
+
+    const etiquetaGravedad=document.createElement('span');
+    const nivel=String(hueco.gravedad||'').trim().toUpperCase();
+    const clasesGravedad={
+        ALTA:'gravedad-alta',
+        MEDIA:'gravedad-media',
+        BAJA:'gravedad-baja'
+    };
+
+    etiquetaGravedad.className='etiqueta-gravedad '+
+        (clasesGravedad[nivel]||'gravedad-desconocida');
+    etiquetaGravedad.textContent=clasesGravedad[nivel]
+        ? nivel : 'No registrada';
+
+    gravedad.appendChild(textoGravedad);
+    gravedad.appendChild(etiquetaGravedad);
     contenedor.appendChild(gravedad);
 
     const configuracion=obtenerEstado(hueco.estado);
