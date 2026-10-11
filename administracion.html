@@ -238,6 +238,26 @@ button:disabled{
 .evidencias-historial h4{margin:0 0 8px}
 .evidencias-historial .etapa{margin-top:12px}
 .evidencias-historial img{max-width:100%;max-height:260px;cursor:zoom-in;border-radius:8px;display:block;margin-top:6px}
+
+/* Tres desplegables de administración por estado */
+.contadores{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grupo-estados{margin:15px 0;border:1px solid #d5e1ed;border-radius:12px;overflow:hidden;background:#fff}
+.grupo-estados.reportado{border-color:#efb6b6}
+.grupo-estados.reparacion{border-color:#eacb83}
+.grupo-estados.reparado{border-color:#a3d8b9}
+.grupo-estados>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:17px 19px;font-weight:bold;font-size:17px}
+.grupo-estados>summary::-webkit-details-marker{display:none}
+.grupo-estados>summary::before{content:'▸';font-size:20px;transition:transform .2s}
+.grupo-estados[open]>summary::before{transform:rotate(90deg)}
+.grupo-estados.reportado>summary{background:#fcebec;color:#a3232a}
+.grupo-estados.reparacion>summary{background:#fff4d9;color:#895b00}
+.grupo-estados.reparado>summary{background:#e8f7ee;color:#146c3b}
+.grupo-estados .grupo-cuerpo{padding:4px 15px 16px}
+.grupo-estados .grupo-cuerpo>.estado-hueco:first-child{margin-top:12px}
+.grupo-estados .grupo-vacio{padding:16px 4px}
+.grupo-estados .grupo-paginacion{padding:8px 0 0}
+@media(max-width:600px){.contadores{grid-template-columns:repeat(3,minmax(0,1fr))}.grupo-estados>summary{padding:14px 11px;font-size:14px}.grupo-estados .grupo-cuerpo{padding:3px 9px 13px}.contador{padding:12px 3px}}
+
 .oculto{display:none!important}
 
 @media(max-width:600px){
@@ -322,23 +342,33 @@ button:disabled{
             <button id="actualizarHuecos" type="button">Actualizar huecos</button>
         </div>
         <p class="aviso">Consulta los huecos publicados y cambia su estado. Solo los administradores activos pueden guardar cambios.</p>
-        <div class="contadores" aria-label="Filtros y conteos por estado">
-            <button type="button" class="contador activo" data-filtro="TODOS"><strong id="conteoTodos">—</strong><span>Todos</span></button>
-            <button type="button" class="contador reportado" data-filtro="REPORTADO"><strong id="conteoReportados">—</strong><span>Reportados</span></button>
-            <button type="button" class="contador reparacion" data-filtro="REPARACION_REPORTADA"><strong id="conteoReparacion">—</strong><span>En reparación</span></button>
-            <button type="button" class="contador reparado" data-filtro="REPARADO"><strong id="conteoReparados">—</strong><span>Reparados</span></button>
+        <div class="contadores" aria-label="Conteos por estado">
+            <div class="contador reportado"><strong id="conteoReportados">—</strong><span>Reportados</span></div>
+            <div class="contador reparacion"><strong id="conteoReparacion">—</strong><span>En reparación</span></div>
+            <div class="contador reparado"><strong id="conteoReparados">—</strong><span>Reparados</span></div>
         </div>
         <div class="herramientas">
-            <input id="buscarHueco" type="search" placeholder="Buscar por ID o dirección" aria-label="Buscar huecos por ID o dirección">
+            <input id="buscarHueco" type="search" placeholder="Buscar por ID o dirección en las tres secciones" aria-label="Buscar huecos por ID o dirección">
             <button id="aplicarBusqueda" type="button">Buscar</button>
             <button id="limpiarBusqueda" class="secundario" type="button">Limpiar</button>
         </div>
         <p id="mensajeHuecos" class="aviso" role="status" aria-live="polite"></p>
-        <div id="listaHuecos"></div>
-        <div class="paginacion">
-            <button id="paginaAnterior" type="button" class="secundario">← Anterior</button>
-            <span id="infoPagina">Página 1</span>
-            <button id="paginaSiguiente" type="button">Siguiente →</button>
+        <div id="listaHuecos">
+            <details class="grupo-estados reportado" data-estado="REPORTADO">
+                <summary>🔴 Huecos reportados (<span data-total="REPORTADO">—</span>)</summary>
+                <div class="grupo-cuerpo" data-lista="REPORTADO"></div>
+                <div class="paginacion grupo-paginacion" data-paginacion="REPORTADO"></div>
+            </details>
+            <details class="grupo-estados reparacion" data-estado="REPARACION_REPORTADA" open>
+                <summary>🟡 Huecos en reparación (<span data-total="REPARACION_REPORTADA">—</span>)</summary>
+                <div class="grupo-cuerpo" data-lista="REPARACION_REPORTADA"></div>
+                <div class="paginacion grupo-paginacion" data-paginacion="REPARACION_REPORTADA"></div>
+            </details>
+            <details class="grupo-estados reparado" data-estado="REPARADO">
+                <summary>🟢 Huecos reparados (<span data-total="REPARADO">—</span>)</summary>
+                <div class="grupo-cuerpo" data-lista="REPARADO"></div>
+                <div class="paginacion grupo-paginacion" data-paginacion="REPARADO"></div>
+            </details>
         </div>
     </section>
 
@@ -396,14 +426,9 @@ const totalPublicados = document.getElementById('totalPublicados');
 const buscarHueco = document.getElementById('buscarHueco');
 const aplicarBusqueda = document.getElementById('aplicarBusqueda');
 const limpiarBusqueda = document.getElementById('limpiarBusqueda');
-const paginaAnterior = document.getElementById('paginaAnterior');
-const paginaSiguiente = document.getElementById('paginaSiguiente');
-const infoPagina = document.getElementById('infoPagina');
 const TAMANO_PAGINA = 20;
-let paginaHuecos = 0;
-let filtroHuecos = 'TODOS';
+const paginasPorEstado = { REPORTADO:0, REPARACION_REPORTADA:0, REPARADO:0 };
 let busquedaHuecos = '';
-let totalFiltrados = 0;
 let vistaActiva = 'pendientes';
 let esAdministrador = false;
 let cargandoHuecos = false;
@@ -1025,7 +1050,6 @@ async function actualizarContadoresHuecos() {
             contarHuecos('REPARACION_REPORTADA'), contarHuecos('REPARADO')
         ]);
         totalPublicados.textContent = todos;
-        document.getElementById('conteoTodos').textContent = todos;
         document.getElementById('conteoReportados').textContent = reportados;
         document.getElementById('conteoReparacion').textContent = reparacion;
         document.getElementById('conteoReparados').textContent = reparados;
@@ -1034,76 +1058,21 @@ async function actualizarContadoresHuecos() {
     }
 }
 
-function actualizarFiltrosVisuales() {
-    document.querySelectorAll('[data-filtro]').forEach(b => {
-        b.classList.toggle('activo', b.dataset.filtro === filtroHuecos);
-        b.setAttribute('aria-pressed', String(b.dataset.filtro === filtroHuecos));
-    });
-}
-
-document.querySelectorAll('[data-filtro]').forEach(b => {
-    b.addEventListener('click', () => {
-        filtroHuecos = b.dataset.filtro;
-        paginaHuecos = 0;
-        actualizarFiltrosVisuales();
-        cargarHuecos();
-    });
-});
-
 function buscar() {
     busquedaHuecos = buscarHueco.value.trim();
-    paginaHuecos = 0;
+    for (const estado of Object.keys(paginasPorEstado)) paginasPorEstado[estado] = 0;
     cargarHuecos();
 }
 aplicarBusqueda.addEventListener('click', buscar);
-buscarHueco.addEventListener('keydown', e => {if(e.key==='Enter') buscar();});
+buscarHueco.addEventListener('keydown', e => { if(e.key === 'Enter') buscar(); });
 limpiarBusqueda.addEventListener('click', () => {
     buscarHueco.value = '';
     busquedaHuecos = '';
-    paginaHuecos = 0;
+    for (const estado of Object.keys(paginasPorEstado)) paginasPorEstado[estado] = 0;
     cargarHuecos();
 });
-paginaAnterior.addEventListener('click', () => {
-    if (paginaHuecos > 0) {paginaHuecos--;cargarHuecos();}
-});
-paginaSiguiente.addEventListener('click', () => {
-    if ((paginaHuecos+1)*TAMANO_PAGINA < totalFiltrados) {paginaHuecos++;cargarHuecos();}
-});
 
-async function cargarHuecos() {
-    if (!autorizado || !esAdministrador || cargandoHuecos) return;
-    cargandoHuecos = true;
-    botonActualizarHuecos.disabled = true;
-    mensajeEstadoHuecos('Consultando huecos publicados...');
-    try {
-        // La política RLS existente limita la consulta a huecos publicados.
-        let consulta = supabase.from('huecos')
-            .select('id_hueco,direccion,gravedad,estado',{count:'exact'});
-        if (filtroHuecos !== 'TODOS') consulta = consulta.eq('estado', filtroHuecos);
-        if (busquedaHuecos) {
-            if (/^\d+$/.test(busquedaHuecos)) {
-                consulta = consulta.eq('id_hueco', Number(busquedaHuecos));
-            } else {
-                // Escapar comodines del patrón ILIKE y caracteres especiales del filtro.
-                const patron = busquedaHuecos.replace(/[\\%_]/g, '\\$&');
-                consulta = consulta.ilike('direccion', '%' + patron + '%');
-            }
-        }
-        const inicio = paginaHuecos * TAMANO_PAGINA;
-        const {data,error,count} = await consulta
-            .order('id_hueco',{ascending:false})
-            .range(inicio,inicio+TAMANO_PAGINA-1);
-        if (error) throw error;
-        listaHuecos.replaceChildren();
-        const huecos = data || [];
-        totalFiltrados = count ?? 0;
-        if (!huecos.length) {
-            const vacio = document.createElement('p');
-            vacio.className = 'aviso';
-            vacio.textContent = 'No se encontraron huecos para los filtros seleccionados.';
-            listaHuecos.appendChild(vacio);
-        }
-        for (const hueco of huecos) {
+function crearTarjetaHueco(hueco, contenedor) {
             const tarjeta = document.createElement('article');
             tarjeta.className = 'estado-hueco';
             const titulo = document.createElement('h3');
@@ -1184,17 +1153,79 @@ async function cargarHuecos() {
             historial.className = 'evidencias-historial';
             historial.textContent = 'Consultando evidencias anteriores...';
             tarjeta.appendChild(historial);
-            listaHuecos.appendChild(tarjeta);
+            contenedor.appendChild(tarjeta);
             cargarEvidenciasHueco(hueco.id_hueco,historial);
             actualizarEditor();
+ }
+
+async function cargarGrupoEstado(estado) {
+    const contenedor = listaHuecos.querySelector(`[data-lista="${estado}"]`);
+    const totalVisible = listaHuecos.querySelector(`[data-total="${estado}"]`);
+    const paginacion = listaHuecos.querySelector(`[data-paginacion="${estado}"]`);
+    let consulta = supabase.from('huecos')
+        .select('id_hueco,direccion,gravedad,estado',{count:'exact'})
+        .eq('estado',estado);
+    if (busquedaHuecos) {
+        if (/^\d+$/.test(busquedaHuecos)) {
+            consulta = consulta.eq('id_hueco', Number(busquedaHuecos));
+        } else {
+            const patron = busquedaHuecos.replace(/[\\%_]/g, '\\$&');
+            consulta = consulta.ilike('direccion','%' + patron + '%');
         }
-        const paginas = Math.max(1,Math.ceil(totalFiltrados/TAMANO_PAGINA));
-        infoPagina.textContent = 'Página '+(paginaHuecos+1)+' de '+paginas;
-        paginaAnterior.disabled = paginaHuecos===0;
-        paginaSiguiente.disabled = (paginaHuecos+1)>=paginas;
-        mensajeEstadoHuecos('Se encontraron '+totalFiltrados+' hueco(s) con los filtros seleccionados.','correcto');
+    }
+    const inicio = paginasPorEstado[estado] * TAMANO_PAGINA;
+    const {data,error,count} = await consulta.order('id_hueco',{ascending:false})
+        .range(inicio,inicio + TAMANO_PAGINA - 1);
+    if (error) throw error;
+    const total = count ?? 0;
+    totalVisible.textContent = total;
+    contenedor.replaceChildren();
+    paginacion.replaceChildren();
+    if (!data?.length) {
+        const vacio = document.createElement('p');
+        vacio.className = 'aviso grupo-vacio';
+        vacio.textContent = total === 0 ? 'No hay huecos en este estado para la búsqueda actual.' : 'No hay registros en esta página.';
+        contenedor.appendChild(vacio);
+    } else {
+        for (const hueco of data) crearTarjetaHueco(hueco,contenedor);
+    }
+    const paginas = Math.max(1,Math.ceil(total/TAMANO_PAGINA));
+    const anterior = document.createElement('button');
+    anterior.type = 'button'; anterior.className = 'secundario';
+    anterior.textContent = '← Anterior';
+    anterior.disabled = paginasPorEstado[estado] === 0;
+    anterior.addEventListener('click',() => {
+        if (cargandoHuecos || paginasPorEstado[estado] === 0) return;
+        paginasPorEstado[estado]--;
+        cargarHuecos();
+    });
+    const indicador = document.createElement('span');
+    indicador.textContent = `Página ${paginasPorEstado[estado]+1} de ${paginas}`;
+    const siguiente = document.createElement('button');
+    siguiente.type = 'button'; siguiente.textContent = 'Siguiente →';
+    siguiente.disabled = paginasPorEstado[estado]+1 >= paginas;
+    siguiente.addEventListener('click',() => {
+        if (cargandoHuecos || paginasPorEstado[estado]+1 >= paginas) return;
+        paginasPorEstado[estado]++;
+        cargarHuecos();
+    });
+    if (total > TAMANO_PAGINA) paginacion.append(anterior,indicador,siguiente);
+    return total;
+}
+
+async function cargarHuecos() {
+    if (!autorizado || !esAdministrador || cargandoHuecos) return;
+    cargandoHuecos = true;
+    botonActualizarHuecos.disabled = true;
+    mensajeEstadoHuecos('Consultando huecos publicados...');
+    try {
+        // Tres consultas independientes: cada desplegable tiene su propia paginación.
+        const estados = ['REPORTADO','REPARACION_REPORTADA','REPARADO'];
+        let total = 0;
+        for (const estado of estados) total += await cargarGrupoEstado(estado);
+        mensajeEstadoHuecos('Se encontraron ' + total + ' hueco(s) con los filtros seleccionados.','correcto');
     } catch (error) {
-        mensajeEstadoHuecos('No fue posible cargar los huecos: '+error.message,'error');
+        mensajeEstadoHuecos('No fue posible cargar los huecos: ' + error.message,'error');
     } finally {
         cargandoHuecos = false;
         botonActualizarHuecos.disabled = false;
