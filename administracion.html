@@ -258,6 +258,17 @@ button:disabled{
 .grupo-estados .grupo-paginacion{padding:8px 0 0}
 @media(max-width:600px){.contadores{grid-template-columns:repeat(3,minmax(0,1fr))}.grupo-estados>summary{padding:14px 11px;font-size:14px}.grupo-estados .grupo-cuerpo{padding:3px 9px 13px}.contador{padding:12px 3px}}
 
+
+/* Indicador de almacenamiento de fotografías */
+.almacenamiento{background:#f7fafc;border:1px solid #d6e1ec;border-radius:12px;padding:17px;margin:15px 0 20px}
+.almacenamiento h3{margin:0 0 12px;font-size:17px}
+.almacenamiento-datos{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:14px}
+.almacenamiento-barra{height:16px;background:#dfe7ef;border-radius:20px;overflow:hidden}
+.almacenamiento-progreso{height:100%;width:0;background:#167346;transition:width .3s}
+.almacenamiento-progreso.alerta{background:#d99a0b}
+.almacenamiento-progreso.critico{background:#b33434}
+.almacenamiento-nota{font-size:12px;color:#52667b;margin:9px 0 0}
+
 .oculto{display:none!important}
 
 @media(max-width:600px){
@@ -356,6 +367,19 @@ button:disabled{
             <div class="contador reparacion"><strong id="conteoReparacion">—</strong><span>En reparación</span></div>
             <div class="contador reparado"><strong id="conteoReparados">—</strong><span>Reparados</span></div>
         </div>
+
+        <section class="almacenamiento" aria-label="Uso del almacenamiento de fotografías">
+            <h3>📷 Almacenamiento de fotografías</h3>
+            <div class="almacenamiento-datos">
+                <span><strong id="almacenamientoUsado">—</strong> utilizados de <strong id="almacenamientoLimite">1 GB</strong></span>
+                <span><strong id="almacenamientoPorcentaje">—</strong> ocupado</span>
+            </div>
+            <div class="almacenamiento-barra" role="progressbar" aria-label="Porcentaje de almacenamiento ocupado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="almacenamientoBarra">
+                <div class="almacenamiento-progreso" id="almacenamientoProgreso"></div>
+            </div>
+            <p class="almacenamiento-nota" id="almacenamientoDetalle">Consultando fotografías almacenadas...</p>
+            <p class="almacenamiento-nota">Se cuentan los archivos del bucket fotografias-huecos. El límite de 1 GB es una referencia del plan gratuito, no una consulta a la cuota de tu cuenta.</p>
+        </section>
         <div class="herramientas">
             <input id="buscarHueco" type="search" placeholder="Buscar por ID o dirección en las tres secciones" aria-label="Buscar huecos por ID o dirección">
             <button id="aplicarBusqueda" type="button">Buscar</button>
@@ -513,7 +537,7 @@ async function verificarAcceso() {
 
         await cargarReportes();
         // El historial se consulta al abrir su módulo; los contadores se cargan en segundo plano.
-        if (esAdministrador) await actualizarContadoresHuecos();
+        if (esAdministrador) { await actualizarContadoresHuecos(); await actualizarAlmacenamiento(); }
 
     } catch (error) {
 
@@ -1010,7 +1034,7 @@ async function validarReporte(idReporte, nuevoEstado) {
 
     cargando = false;
     await cargarReportes();
-    if (esAdministrador) await actualizarContadoresHuecos();
+    if (esAdministrador) { await actualizarContadoresHuecos(); await actualizarAlmacenamiento(); }
 }
 
 /* ADMINISTRACIÓN DE ESTADOS DE HUECOS */
@@ -1035,7 +1059,7 @@ function cambiarVista(vista) {
     moduloHuecos.classList.toggle('activo', vista === 'huecos');
     moduloPendientes.setAttribute('aria-pressed', String(vista === 'pendientes'));
     moduloHuecos.setAttribute('aria-pressed', String(vista === 'huecos'));
-    if (vista === 'huecos') cargarHuecos();
+    if (vista === 'huecos') { cargarHuecos(); actualizarAlmacenamiento(); }
     else requestAnimationFrame(() => mapas.forEach(m => m.invalidateSize()));
 }
 
@@ -1049,6 +1073,39 @@ async function contarHuecos(estado = null) {
     const {count,error} = await consulta;
     if (error) throw error;
     return count ?? 0;
+}
+
+
+const LIMITE_ALMACENAMIENTO_BYTES = 1024 * 1024 * 1024;
+const formatoTamano = bytes => {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 ** 3)).toLocaleString('es-CO',{maximumFractionDigits:2}) + ' GB';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 ** 2)).toLocaleString('es-CO',{maximumFractionDigits:2}) + ' MB';
+    return (bytes / 1024).toLocaleString('es-CO',{maximumFractionDigits:1}) + ' KB';
+};
+async function actualizarAlmacenamiento() {
+    if (!autorizado || !esAdministrador) return;
+    const detalle = document.getElementById('almacenamientoDetalle');
+    try {
+        const {data,error} = await supabase.rpc('consultar_almacenamiento_fotografias');
+        if (error) throw error;
+        const fila = Array.isArray(data) ? data[0] : data;
+        if (!fila) throw new Error('La consulta no devolvió información.');
+        const bytes = Math.max(0,Number(fila.bytes_usados) || 0);
+        const cantidad = Number(fila.total_archivos) || 0;
+        const porcentaje = bytes / LIMITE_ALMACENAMIENTO_BYTES * 100;
+        const barra = document.getElementById('almacenamientoBarra');
+        const progreso = document.getElementById('almacenamientoProgreso');
+        document.getElementById('almacenamientoUsado').textContent = formatoTamano(bytes);
+        document.getElementById('almacenamientoPorcentaje').textContent = porcentaje.toLocaleString('es-CO',{maximumFractionDigits:1}) + ' %';
+        barra.setAttribute('aria-valuenow',String(Math.min(100,Math.round(porcentaje))));
+        progreso.style.width = Math.min(100,porcentaje) + '%';
+        progreso.classList.toggle('alerta',porcentaje >= 70 && porcentaje < 90);
+        progreso.classList.toggle('critico',porcentaje >= 90);
+        const libres = Math.max(0,LIMITE_ALMACENAMIENTO_BYTES - bytes);
+        detalle.textContent = cantidad.toLocaleString('es-CO') + ' fotografía(s) o archivo(s) · ' + formatoTamano(libres) + ' disponibles aproximadamente.';
+    } catch(error) {
+        detalle.textContent = 'No fue posible consultar el almacenamiento: ' + error.message + '. Verifica que ejecutaste el SQL del indicador.';
+    }
 }
 
 async function actualizarContadoresHuecos() {
@@ -1450,11 +1507,13 @@ async function cambiarEstadoHueco(idHueco, nuevoEstado, archivo = null) {
     }
     cargandoHuecos = false;
     await actualizarContadoresHuecos();
+    await actualizarAlmacenamiento();
     await cargarHuecos();
 }
 
 botonActualizarHuecos.addEventListener('click', async () => {
     await actualizarContadoresHuecos();
+    await actualizarAlmacenamiento();
     await cargarHuecos();
 });
 
