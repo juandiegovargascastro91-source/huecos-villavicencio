@@ -288,6 +288,14 @@ button:disabled{
 .fotos-ciudadanas .foto-ciudadana img{display:block;width:100%;max-height:210px;object-fit:contain;cursor:zoom-in;border-radius:6px}
 .fotos-ciudadanas .foto-ciudadana small{display:block;margin-top:8px;color:#52667b}
 
+
+/* Ubicación de huecos aprobados */
+.ubicacion-hueco{margin:14px 0;padding:14px;border:1px solid #d6e1ec;border-radius:10px;background:#f7fafc;line-height:1.8}
+.ubicacion-hueco h4{margin:0 0 8px}
+.ubicacion-hueco .acciones{margin-top:10px}
+.enlace-maps{display:inline-flex;align-items:center;padding:10px 12px;color:#115b99;font-weight:bold}
+.ubicacion-hueco .mapa-reporte{height:290px}
+
 </style>
 </head>
 
@@ -1222,8 +1230,67 @@ function crearTarjetaHueco(hueco, contenedor) {
             detalle.className = 'detalle';
             crearTexto(detalle, 'Dirección', hueco.direccion);
             crearTexto(detalle, 'Gravedad', hueco.gravedad);
-            tarjeta.appendChild(detalle);
-            const actual = document.createElement('div');
+             tarjeta.appendChild(detalle);
+             // Ubicación de cada hueco aprobado: coordenadas y mapa bajo demanda.
+             const ubicacion = document.createElement('section');
+             ubicacion.className = 'ubicacion-hueco';
+             const encabezadoUbicacion = document.createElement('h4');
+             encabezadoUbicacion.textContent = '📍 Ubicación geográfica';
+             ubicacion.appendChild(encabezadoUbicacion);
+             const lat = Number(hueco.latitud);
+             const lng = Number(hueco.longitud);
+             const coordenadasValidas = hueco.latitud !== null && hueco.latitud !== undefined &&
+                 hueco.longitud !== null && hueco.longitud !== undefined &&
+                 hueco.latitud !== '' && hueco.longitud !== '' &&
+                 Number.isFinite(lat) && Number.isFinite(lng) &&
+                 lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+             if (coordenadasValidas) {
+                 crearTexto(ubicacion, 'Latitud', lat.toFixed(7));
+                 crearTexto(ubicacion, 'Longitud', lng.toFixed(7));
+                 const controlesMapa = document.createElement('div');
+                 controlesMapa.className = 'acciones';
+                 const botonMapa = document.createElement('button');
+                 botonMapa.type = 'button';
+                 botonMapa.textContent = 'Ver mapa';
+                 const enlaceMaps = document.createElement('a');
+                 enlaceMaps.className = 'enlace-maps';
+                 enlaceMaps.href = 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng);
+                 enlaceMaps.target = '_blank';
+                 enlaceMaps.rel = 'noopener noreferrer';
+                 enlaceMaps.textContent = 'Abrir en Google Maps ↗';
+                 controlesMapa.append(botonMapa, enlaceMaps);
+                 ubicacion.appendChild(controlesMapa);
+                 const contenedorMapa = document.createElement('div');
+                 contenedorMapa.className = 'mapa-reporte oculto';
+                 ubicacion.appendChild(contenedorMapa);
+                 let mapaHueco = null;
+                 botonMapa.addEventListener('click', () => {
+                     const mostrar = contenedorMapa.classList.contains('oculto');
+                     contenedorMapa.classList.toggle('oculto', !mostrar);
+                     botonMapa.textContent = mostrar ? 'Ocultar mapa' : 'Ver mapa';
+                     if (!mostrar) return;
+                     if (typeof L === 'undefined') {
+                         contenedorMapa.textContent = 'No fue posible cargar el mapa interactivo.';
+                         return;
+                     }
+                     if (!mapaHueco) {
+                         mapaHueco = L.map(contenedorMapa).setView([lat,lng],17);
+                         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                             maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+                         }).addTo(mapaHueco);
+                         L.marker([lat,lng]).addTo(mapaHueco)
+                             .bindPopup('Hueco #' + hueco.id_hueco);
+                     }
+                     requestAnimationFrame(() => mapaHueco.invalidateSize());
+                 });
+             } else {
+                 const avisoUbicacion = document.createElement('p');
+                 avisoUbicacion.className = 'aviso';
+                 avisoUbicacion.textContent = 'Este hueco no tiene coordenadas válidas registradas.';
+                 ubicacion.appendChild(avisoUbicacion);
+             }
+             tarjeta.appendChild(ubicacion);
+             const actual = document.createElement('div');
             actual.className = 'estado-actual ' + (
                 hueco.estado === 'REPORTADO' ? 'reportado' :
                 hueco.estado === 'REPARACION_REPORTADA' ? 'reparacion' :
@@ -1313,7 +1380,7 @@ async function cargarGrupoEstado(estado) {
     const totalVisible = listaHuecos.querySelector(`[data-total="${estado}"]`);
     const paginacion = listaHuecos.querySelector(`[data-paginacion="${estado}"]`);
     let consulta = supabase.from('huecos')
-        .select('id_hueco,direccion,gravedad,estado',{count:'exact'})
+        .select('id_hueco,direccion,gravedad,estado,latitud,longitud',{count:'exact'})
         .eq('estado',estado);
     if (busquedaHuecos) {
         if (/^\d+$/.test(busquedaHuecos)) {
