@@ -296,6 +296,11 @@ button:disabled{
 .enlace-maps{display:inline-flex;align-items:center;padding:10px 12px;color:#115b99;font-weight:bold}
 .ubicacion-hueco .mapa-reporte{height:290px}
 
+/* Mapa general administrativo */
+#mapaGeneral{height:540px;width:100%;border:1px solid #d6e1ec;border-radius:10px;margin-top:14px}
+.filtros-mapa{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.filtros-mapa label{display:flex;align-items:center;gap:7px;padding:8px 12px;background:#f3f6fa;border-radius:8px}
+@media(max-width:600px){#mapaGeneral{height:410px}.modulos{grid-template-columns:1fr}}
 </style>
 </head>
 
@@ -344,7 +349,24 @@ button:disabled{
             <strong id="totalPublicados">—</strong>
             <span>Huecos publicados</span>
         </button>
+        <button id="moduloMapa" class="modulo oculto" type="button" aria-pressed="false">
+            Mapa general de huecos
+            <strong>📍</strong>
+            <span>Ubicaciones y estados</span>
+        </button>
     </nav>
+
+    <section id="panelMapa" class="panel oculto">
+        <div class="barra"><h2>Mapa general de huecos publicados</h2><button id="actualizarMapaGeneral" type="button">Actualizar mapa</button></div>
+        <p class="aviso">Selecciona los estados que deseas visualizar. Haz clic en un marcador para consultar su dirección, gravedad y coordenadas.</p>
+        <div class="filtros-mapa">
+            <label><input type="checkbox" class="filtro-estado-mapa" value="REPORTADO" checked> 🔴 Reportados <strong id="mapaTotalReportados">—</strong></label>
+            <label><input type="checkbox" class="filtro-estado-mapa" value="REPARACION_REPORTADA" checked> 🟡 En reparación <strong id="mapaTotalReparacion">—</strong></label>
+            <label><input type="checkbox" class="filtro-estado-mapa" value="REPARADO" checked> 🟢 Reparados <strong id="mapaTotalReparados">—</strong></label>
+        </div>
+        <p id="mensajeMapaGeneral" class="aviso" role="status" aria-live="polite"></p>
+        <div id="mapaGeneral" aria-label="Mapa interactivo de todos los huecos"></div>
+    </section>
 
     <section id="panelPendientes" class="panel">
 
@@ -463,6 +485,8 @@ const botonActualizarHuecos = document.getElementById('actualizarHuecos');
 const panelPendientes = document.getElementById('panelPendientes');
 const moduloPendientes = document.getElementById('moduloPendientes');
 const moduloHuecos = document.getElementById('moduloHuecos');
+const moduloMapa = document.getElementById('moduloMapa');
+const panelMapa = document.getElementById('panelMapa');
 const totalPublicados = document.getElementById('totalPublicados');
 const buscarHueco = document.getElementById('buscarHueco');
 const aplicarBusqueda = document.getElementById('aplicarBusqueda');
@@ -532,6 +556,7 @@ async function verificarAcceso() {
             esAdministrador = false;
             panelEstados.classList.add('oculto');
             moduloHuecos.classList.add('oculto');
+            moduloMapa.classList.add('oculto');
             mostrarMensaje(
                 'No fue posible comprobar el rol de administrador: ' +
                 errorAdministrador.message,
@@ -540,6 +565,7 @@ async function verificarAcceso() {
         } else {
             esAdministrador = permisoAdministrador === true;
             moduloHuecos.classList.toggle('oculto', !esAdministrador);
+            moduloMapa.classList.toggle('oculto', !esAdministrador);
             panelEstados.classList.add('oculto');
         }
 
@@ -1059,20 +1085,99 @@ function mensajeEstadoHuecos(texto, tipo='aviso') {
 }
 
 function cambiarVista(vista) {
-    if (vista === 'huecos' && !esAdministrador) return;
+    if ((vista === 'huecos' || vista === 'mapa') && !esAdministrador) return;
     vistaActiva = vista;
     panelPendientes.classList.toggle('oculto', vista !== 'pendientes');
     panelEstados.classList.toggle('oculto', vista !== 'huecos');
+    panelMapa.classList.toggle('oculto', vista !== 'mapa');
+    moduloMapa.classList.toggle('activo', vista === 'mapa');
+    moduloMapa.setAttribute('aria-pressed', String(vista === 'mapa'));
     moduloPendientes.classList.toggle('activo', vista === 'pendientes');
     moduloHuecos.classList.toggle('activo', vista === 'huecos');
     moduloPendientes.setAttribute('aria-pressed', String(vista === 'pendientes'));
     moduloHuecos.setAttribute('aria-pressed', String(vista === 'huecos'));
     if (vista === 'huecos') { cargarHuecos(); actualizarAlmacenamiento(); }
+    if (vista === 'mapa') { cargarMapaGeneral(); }
     else requestAnimationFrame(() => mapas.forEach(m => m.invalidateSize()));
 }
 
 moduloPendientes.addEventListener('click', () => cambiarVista('pendientes'));
 moduloHuecos.addEventListener('click', () => cambiarVista('huecos'));
+moduloMapa.addEventListener('click', () => cambiarVista('mapa'));
+
+/* MAPA GENERAL EXCLUSIVO DEL PANEL ADMINISTRATIVO */
+let mapaGeneralInstancia = null;
+let capaMapaGeneral = null;
+let registrosMapaGeneral = [];
+let cargandoMapaGeneral = false;
+const coloresMapaGeneral = {REPORTADO:'#d93636',REPARACION_REPORTADA:'#e9a600',REPARADO:'#198754'};
+const filtrosMapaGeneral = Array.from(document.querySelectorAll('.filtro-estado-mapa'));
+const mensajeMapaGeneral = document.getElementById('mensajeMapaGeneral');
+
+function prepararMapaGeneral(){
+    if(mapaGeneralInstancia) return true;
+    if(typeof L === 'undefined'){
+        mensajeMapaGeneral.textContent = 'No se pudo cargar Leaflet. Comprueba tu conexión.';
+        return false;
+    }
+    mapaGeneralInstancia = L.map('mapaGeneral').setView([4.142,-73.6266],13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(mapaGeneralInstancia);
+    capaMapaGeneral = L.featureGroup().addTo(mapaGeneralInstancia);
+    return true;
+}
+function pintarMapaGeneral(){
+    if(!mapaGeneralInstancia)return;
+    capaMapaGeneral.clearLayers();
+    const seleccion = new Set(filtrosMapaGeneral.filter(x=>x.checked).map(x=>x.value));
+    const totales = {REPORTADO:0,REPARACION_REPORTADA:0,REPARADO:0};
+    for(const h of registrosMapaGeneral){
+        if(Object.prototype.hasOwnProperty.call(totales,h.estado)) totales[h.estado]++;
+        if(!seleccion.has(h.estado))continue;
+        const lat=Number(h.latitud),lng=Number(h.longitud);
+        if(h.latitud==null||h.longitud==null||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)continue;
+        const color=coloresMapaGeneral[h.estado]||'#52667b';
+        const marcador=L.circleMarker([lat,lng],{radius:9,color:'#ffffff',weight:2,fillColor:color,fillOpacity:1});
+        const contenedor=document.createElement('div');
+        const titulo=document.createElement('strong');titulo.textContent='Hueco #'+h.id_hueco;contenedor.appendChild(titulo);
+        for(const [etiqueta,valor] of [['Dirección',h.direccion||'Sin dirección'],['Gravedad',h.gravedad||'No registrada'],['Estado',nombresEstados[h.estado]||h.estado],['Latitud',lat.toFixed(7)],['Longitud',lng.toFixed(7)]]){
+            const linea=document.createElement('div');linea.textContent=etiqueta+': '+valor;contenedor.appendChild(linea);
+        }
+        const enlace=document.createElement('a');enlace.href='https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng);enlace.target='_blank';enlace.rel='noopener noreferrer';enlace.textContent='Abrir en Google Maps';contenedor.appendChild(enlace);
+        marcador.bindPopup(contenedor);capaMapaGeneral.addLayer(marcador);
+    }
+    document.getElementById('mapaTotalReportados').textContent=totales.REPORTADO;
+    document.getElementById('mapaTotalReparacion').textContent=totales.REPARACION_REPORTADA;
+    document.getElementById('mapaTotalReparados').textContent=totales.REPARADO;
+    requestAnimationFrame(()=>{
+        mapaGeneralInstancia.invalidateSize();
+        if(capaMapaGeneral.getLayers().length)mapaGeneralInstancia.fitBounds(capaMapaGeneral.getBounds().pad(0.15),{maxZoom:16});
+    });
+    mensajeMapaGeneral.textContent=capaMapaGeneral.getLayers().length+' hueco(s) visibles en el mapa.';
+}
+async function cargarMapaGeneral(){
+    if(!esAdministrador||cargandoMapaGeneral||!prepararMapaGeneral())return;
+    cargandoMapaGeneral=true;
+    mensajeMapaGeneral.textContent='Consultando ubicaciones...';
+    try{
+        const registros=[];
+        const tamano=1000;
+        for(let inicio=0;inicio<10000;inicio+=tamano){
+            const {data,error}=await supabase.from('huecos')
+                .select('id_hueco,direccion,gravedad,estado,latitud,longitud')
+                .order('id_hueco',{ascending:true}).range(inicio,inicio+tamano-1);
+            if(error)throw error;
+            registros.push(...(data||[]));
+            if(!data||data.length<tamano)break;
+        }
+        registrosMapaGeneral=registros;
+        pintarMapaGeneral();
+    }catch(error){mensajeMapaGeneral.textContent='No se pudo cargar el mapa: '+error.message;}
+    finally{cargandoMapaGeneral=false;}
+}
+filtrosMapaGeneral.forEach(f=>f.addEventListener('change',pintarMapaGeneral));
+document.getElementById('actualizarMapaGeneral').addEventListener('click',cargarMapaGeneral);
 
 async function contarHuecos(estado = null) {
     let consulta = supabase.from('huecos')
