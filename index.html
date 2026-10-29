@@ -1,307 +1,103 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HUECOS VILLAVICENCIO</title>
-
 <style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f3f6fa;
-    color: #183153;
-    text-align: center;
-}
-
-header {
-    background: #12345a;
-    color: white;
-    padding: 45px 20px;
-}
-
-main {
-    max-width: 700px;
-    margin: 60px auto;
-    padding: 25px;
-}
-
-.mensaje {
-    background: white;
-    padding: 35px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px #00000012;
-}
-
-.botones {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 22px;
-}
-
-.boton {
-    display: inline-block;
-    background: #115b99;
-    color: white;
-    padding: 14px 25px;
-    border: none;
-    border-radius: 9px;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.boton:hover {
-    background: #0d4778;
-}
-
-.secundario {
-    background: #52667b;
-}
-
-.secundario:hover {
-    background: #405368;
-}
-
-.boton:disabled {
-    opacity: .6;
-    cursor: wait;
-}
-
-#estado {
-    color: #52667b;
-    margin-top: 15px;
-}
-
-[hidden] {
-    display: none !important;
-}
-
+body { margin: 0; font-family: Arial, sans-serif; background: #f3f6fa; color: #183153; text-align: center; }
+header { background: #12345a; color: white; padding: 45px 20px; }
+main { max-width: 700px; margin: 60px auto; padding: 25px; }
+.mensaje { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 15px #00000012; }
+.botones { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.boton { display: inline-block; background: #115b99; color: white; padding: 14px 25px; border: none; border-radius: 9px; text-decoration: none; font-size: 16px; font-weight: bold; cursor: pointer; }
+.boton:hover { background: #0d4778; }
+.secundario { background: #52667b; }
+.secundario:hover { background: #405368; }
+.boton:disabled { opacity: .6; cursor: wait; }
+#estado { color: #52667b; margin-top: 15px; }
+[hidden] { display: none !important; }
 @media (max-width: 600px) {
-    main {
-        margin: 25px auto;
-        padding: 15px;
-    }
-
-    .mensaje {
-        padding: 25px 18px;
-    }
-
-    .boton {
-        width: 100%;
-        box-sizing: border-box;
-    }
+    main { margin: 25px auto; padding: 15px; }
+    .mensaje { padding: 25px 18px; }
+    .boton { width: 100%; box-sizing: border-box; }
 }
 </style>
 </head>
-
 <body>
-
 <header>
     <h1>HUECOS VILLAVICENCIO</h1>
     <p>Plataforma ciudadana de reporte vial</p>
 </header>
-
 <main>
     <div class="mensaje">
-
         <h2 id="bienvenida">¡Bienvenido!</h2>
-
-        <p>
-            Plataforma ciudadana para reportar
-            y consultar huecos en Villavicencio, Meta.
-        </p>
-
-        <p id="descripcion">
-            Regístrate o inicia sesión para reportar
-            los daños que encuentres en las vías.
-        </p>
-
-        <p id="estado" role="status" aria-live="polite">
-            Verificando sesión...
-        </p>
-
-        <!-- Mapa público: disponible para todos -->
-
-        <div class="botones">
-
-            <a href="mapa.html" class="boton">
-                Consultar mapa de huecos
-            </a>
-
-        </div>
-
-        <!-- Opciones para visitantes -->
-
+        <p>Plataforma ciudadana para reportar huecos en Villavicencio, Meta.</p>
+        <p id="descripcion">Regístrate o inicia sesión para reportar los daños que encuentres en las vías.</p>
+        <p id="estado" role="status" aria-live="polite">Verificando sesión...</p>
         <div id="sinSesion" class="botones" hidden>
-
-            <a href="registro.html" class="boton">
-                Registrarse
-            </a>
-
-            <a href="login.html" class="boton secundario">
-                Iniciar sesión
-            </a>
-
+            <a href="registro.html" class="boton">Registrarse</a>
+            <a href="login.html" class="boton secundario">Iniciar sesión</a>
         </div>
-
-        <!-- Opciones para usuarios autenticados -->
-
         <div id="conSesion" class="botones" hidden>
-
-            <a href="reportar.html" class="boton">
-                Reportar hueco
-            </a>
-
-            <button
-                id="cerrarSesion"
-                class="boton secundario"
-                type="button">
-                Cerrar sesión
-            </button>
-
+            <a href="reportar.html" class="boton">Reportar hueco</a>
+            <button id="cerrarSesion" class="boton secundario" type="button">Cerrar sesión</button>
         </div>
-
     </div>
 </main>
-
 <script type="module">
-
-import { createClient } from
-'https://esm.sh/@supabase/supabase-js@2';
-
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const supabase = createClient(
     'https://svwsaunrxskdifvsillz.supabase.co',
     'sb_publishable_HYvQ6grfV_I-yxVhuG1qwQ_xRJIJCCI'
 );
-
-const bienvenida =
-    document.getElementById('bienvenida');
-
-const descripcion =
-    document.getElementById('descripcion');
-
-const estado =
-    document.getElementById('estado');
-
-const sinSesion =
-    document.getElementById('sinSesion');
-
-const conSesion =
-    document.getElementById('conSesion');
-
-const cerrarSesion =
-    document.getElementById('cerrarSesion');
-
-/* Mostrar opciones sin sesión */
-
+const bienvenida = document.getElementById('bienvenida');
+const descripcion = document.getElementById('descripcion');
+const estado = document.getElementById('estado');
+const sinSesion = document.getElementById('sinSesion');
+const conSesion = document.getElementById('conSesion');
+const cerrarSesion = document.getElementById('cerrarSesion');
 function mostrarSinSesion() {
-
     bienvenida.textContent = '¡Bienvenido!';
-
-    descripcion.textContent =
-        'Regístrate o inicia sesión para reportar ' +
-        'los daños que encuentres en las vías.';
-
+    descripcion.textContent = 'Regístrate o inicia sesión para reportar ' + 'los daños que encuentres en las vías.';
     sinSesion.hidden = false;
     conSesion.hidden = true;
-
     estado.textContent = '';
 }
-
-/* Mostrar opciones con sesión */
-
 function mostrarConSesion(usuario) {
-
-    const nombres =
-        usuario.user_metadata?.nombres?.trim();
-
-    const apellidos =
-        usuario.user_metadata?.apellidos?.trim();
-
-    const nombreCompleto =
-        [nombres, apellidos]
-            .filter(Boolean)
-            .join(' ');
-
-    bienvenida.textContent = nombreCompleto
-        ? '¡Bienvenido, ' + nombreCompleto + '!'
-        : '¡Bienvenido!';
-
-    descripcion.textContent =
-        'Ya puedes registrar huecos en Villavicencio ' +
-        'y contribuir al mejoramiento de nuestras vías.';
-
+    const nombres = usuario.user_metadata?.nombres?.trim();
+    const apellidos = usuario.user_metadata?.apellidos?.trim();
+    const nombreCompleto = [nombres, apellidos].filter(Boolean).join(' ');
+    bienvenida.textContent = nombreCompleto ? '¡Bienvenido, ' + nombreCompleto + '!' : '¡Bienvenido!';
+    descripcion.textContent = 'Ya puedes registrar huecos en Villavicencio ' + 'y contribuir al mejoramiento de nuestras vías.';
     sinSesion.hidden = true;
     conSesion.hidden = false;
-
-    estado.textContent =
-        'Sesión iniciada correctamente.';
+    estado.textContent = 'Sesión iniciada correctamente.';
 }
-
-/* Verificar sesión */
-
 async function verificarSesion() {
-
     try {
-
-        const { data, error } =
-            await supabase.auth.getUser();
-
+        const { data, error } = await supabase.auth.getUser();
         if (error || !data.user) {
-
             mostrarSinSesion();
             return;
-
         }
-
         mostrarConSesion(data.user);
-
     } catch (error) {
-
         mostrarSinSesion();
-
-        estado.textContent =
-            'No fue posible verificar la sesión. ' +
-            'Intenta actualizar.';
-
+        estado.textContent = 'No fue posible verificar la sesión. ' + 'Intenta actualizar.';
     }
-
 }
-
-/* Cerrar sesión */
-
 cerrarSesion.addEventListener('click', async () => {
-
     cerrarSesion.disabled = true;
-
-    const { error } =
-        await supabase.auth.signOut();
-
+    const { error } = await supabase.auth.signOut();
     cerrarSesion.disabled = false;
-
     if (error) {
-
-        estado.textContent =
-            'No se pudo cerrar la sesión: ' +
-            error.message;
-
+        estado.textContent = 'No se pudo cerrar la sesión: ' + error.message;
         return;
     }
-
     mostrarSinSesion();
-
 });
-
-/* Iniciar */
-
 verificarSesion();
-
 </script>
-
 </body>
 </html>
